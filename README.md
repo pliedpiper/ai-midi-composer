@@ -1,6 +1,6 @@
 # AI MIDI Composer
 
-Generate a short musical idea with an LLM, preview it in a piano roll, play it back in the browser (Tone.js), and export it as a `.mid` file.
+Generate musical ideas with AI, preview them in a piano roll, play back in the browser, and export as MIDI.
 
 <div align="center">
   <img width="1200" height="475" alt="AI MIDI Composer banner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
@@ -8,57 +8,102 @@ Generate a short musical idea with an LLM, preview it in a piano roll, play it b
 
 ## Features
 
-- Prompt → AI-generated composition (`title`, `bpm`, `notes`)
-- Add parts to an existing idea: `melody`, `chords`, `bass`
-- Playback with Tone.js + a simple piano roll visualization
-- Export Standard MIDI File (Type 0)
-- Model list + labels via `models.txt`
+- **Text-to-music generation** — Describe what you want, get a composition with `title`, `bpm`, and `notes`
+- **Layered composition** — Add melody, chords, or bass parts to build on existing ideas
+- **Live playback** — Hear your composition instantly with Tone.js synthesis
+- **Piano roll visualization** — See notes in a scrolling grid with playhead tracking
+- **MIDI export** — Download as a Standard MIDI File (Type 0)
+- **Multi-model support** — Choose from any model in `models.txt` via OpenRouter
 
 ## Quickstart
 
-**Prereqs:** Node.js 18+
+**Prerequisites:** Node.js 18+
 
-1. Install:
-   - `npm install`
-2. Configure your OpenRouter key:
-   - `cp .env.example .env.local`
-   - Set `OPENROUTER_API_KEY=...` in `.env.local`
-3. Run:
-   - `npm run dev`
-4. Open:
-   - `http://localhost:3000`
+```bash
+# 1. Install dependencies
+npm install
 
-## Model selection
+# 2. Configure OpenRouter API key
+cp .env.example .env.local
+# Edit .env.local and set OPENROUTER_API_KEY=sk-or-...
 
-Models are sourced from `models.txt` (one per line; blank lines and `#` comments are ignored).
+# 3. Start development server
+npm run dev
 
-Supported line formats:
+# 4. Open in browser
+open http://localhost:3000
+```
 
-- `provider/model-id`
-- `provider/model-id,Human-readable name`
+## Model Selection
 
-Ways to pick a model:
+Models are defined in `models.txt` (one per line; blank lines and `#` comments ignored).
 
-- In-app dropdown (persisted in `localStorage`)
-- URL param (validated against `models.txt`):
-  - `http://localhost:3000/?model=openai/gpt-5-mini`
-  - `http://localhost:3000/?--model=openai/gpt-5-mini`
+**Supported formats:**
+```
+provider/model-id
+provider/model-id,Human-readable label
+```
 
-## Configuration notes (important)
+**Ways to select a model:**
+- **Dropdown** — Select in the header (persisted to `localStorage`)
+- **URL param** — `?model=google/gemini-2.0-flash-001` or `?--model=...`
 
-- This is a front-end-only app: `OPENROUTER_API_KEY` is embedded into the client bundle at build time (see `vite.config.ts`).
-- Treat the key as exposed to anyone who can load your app. For production, use a small backend/proxy so the browser never sees the API key.
+## Configuration Notes
+
+> ⚠️ **Security:** This is a frontend-only app. The `OPENROUTER_API_KEY` is embedded into the client bundle at build time (see `vite.config.ts`). Treat the key as exposed to anyone who can load your app. For production, use a backend proxy.
 
 ## Scripts
 
-- `npm run dev` — start Vite dev server (port `3000`)
-- `npm run build` — build for production into `dist/`
-- `npm run preview` — preview the production build locally
+| Command | Description |
+|---------|-------------|
+| `npm run dev` | Start Vite dev server on port 3000 |
+| `npm run build` | Build for production into `dist/` |
+| `npm run preview` | Preview the production build locally |
 
-## Project layout
+## Project Structure
 
-- `App.tsx` — UI + playback + export
-- `services/geminiService.ts` — OpenRouter chat completions calls (JSON-only responses)
-- `services/midiEncoder.ts` — minimal MIDI (SMF Type 0) encoder
-- `components/PianoRoll.tsx` — piano roll renderer
-- `models.txt` — allowed model IDs + optional display labels
+```
+├── App.tsx                      # Main app shell, model selection, layout
+├── types.ts                     # TypeScript types (NoteEvent, Composition, PartType)
+│
+├── hooks/
+│   ├── usePlayback.ts           # Tone.js synth, transport, play/stop logic
+│   └── useComposition.ts        # Composition state, generate & addPart API calls
+│
+├── components/
+│   ├── PromptInput.tsx          # Text input + generate button + error display
+│   ├── CompositionCard.tsx      # Title bar + piano roll + add parts (container)
+│   ├── PianoRoll.tsx            # Note grid visualization with playhead
+│   ├── PlayerControls.tsx       # Play/stop + download buttons
+│   └── AddPartButtons.tsx       # Melody/chords/bass layer buttons
+│
+├── services/
+│   ├── geminiService.ts         # OpenRouter API calls for music generation
+│   ├── midiEncoder.ts           # Pure JS MIDI file encoder (SMF Type 0)
+│   └── models.ts                # Model list parsing from models.txt
+│
+└── models.txt                   # Allowed model IDs + optional display labels
+```
+
+## How It Works
+
+1. **Generation** — User enters a prompt → `geminiService.generateMusic()` sends it to the selected LLM via OpenRouter → AI returns JSON with `{ title, bpm, notes[] }`
+
+2. **Playback** — `usePlayback` hook initializes a Tone.js PolySynth → converts notes to Tone.Part events → schedules playback with automatic stop
+
+3. **Adding Parts** — `geminiService.addMusicPart()` sends existing notes + part type to the AI → new notes are merged and sorted by `startTime`
+
+4. **Export** — `midiEncoder.createMidiFile()` converts notes to binary MIDI format (SMF Type 0) → downloads as `.mid` file
+
+## Tech Stack
+
+- **React 19** — UI framework
+- **Vite** — Build tooling
+- **Tone.js** — Web audio synthesis (loaded via CDN)
+- **Tailwind CSS** — Styling (loaded via CDN)
+- **OpenRouter** — LLM API gateway
+- **TypeScript** — Type safety
+
+## License
+
+MIT
