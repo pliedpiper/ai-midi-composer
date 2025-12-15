@@ -18,6 +18,34 @@ const App = () => {
   // Tone.js refs
   const synthRef = useRef<any>(null);
   const partRef = useRef<any>(null);
+  const stopEventIdRef = useRef<number | null>(null);
+
+  const beatsToTransportTime = (beats: number) => {
+    const safeBeats = Number.isFinite(beats) ? Math.max(0, beats) : 0;
+    let bars = Math.floor(safeBeats / 4);
+    const beatRemainder = safeBeats - bars * 4;
+    let quarters = Math.floor(beatRemainder);
+    let sixteenths = Math.round((beatRemainder - quarters) * 4);
+
+    if (sixteenths >= 4) {
+      quarters += 1;
+      sixteenths = 0;
+    }
+    if (quarters >= 4) {
+      bars += 1;
+      quarters = 0;
+    }
+
+    return `${bars}:${quarters}:${sixteenths}`;
+  };
+
+  const clearScheduledStop = useCallback(() => {
+    if (!window.Tone) return;
+    if (stopEventIdRef.current != null) {
+      window.Tone.Transport.clear(stopEventIdRef.current);
+      stopEventIdRef.current = null;
+    }
+  }, []);
 
   useEffect(() => {
     try {
@@ -114,6 +142,7 @@ const App = () => {
     await window.Tone.start();
 
     if (synthRef.current) {
+      clearScheduledStop();
       if (partRef.current) {
         partRef.current.dispose();
       }
@@ -121,9 +150,9 @@ const App = () => {
       window.Tone.Transport.bpm.value = composition.bpm;
 
       const toneEvents = composition.notes.map(n => ({
-        time: `0:${Math.floor(n.startTime)}:${Math.round((n.startTime % 1) * 4)}`,
+        time: beatsToTransportTime(n.startTime),
         note: window.Tone.Frequency(n.note, "midi").toNote(),
-        duration: n.duration,
+        duration: beatsToTransportTime(n.duration),
         velocity: n.velocity / 127
       }));
 
@@ -136,6 +165,17 @@ const App = () => {
         );
       }, toneEvents).start(0);
 
+      const endBeats = composition.notes.reduce(
+        (max, n) => Math.max(max, n.startTime + n.duration),
+        0
+      );
+      const tailSeconds = 1.25;
+      const tailBeats = (tailSeconds * composition.bpm) / 60;
+      stopEventIdRef.current = window.Tone.Transport.scheduleOnce(() => {
+        stopEventIdRef.current = null;
+        stopPlayback();
+      }, beatsToTransportTime(endBeats + tailBeats));
+
       window.Tone.Transport.start();
       setIsPlaying(true);
     }
@@ -143,6 +183,7 @@ const App = () => {
 
   const stopPlayback = useCallback(() => {
     if (window.Tone) {
+      clearScheduledStop();
       window.Tone.Transport.stop();
       window.Tone.Transport.position = 0;
       if (partRef.current) {
@@ -151,7 +192,7 @@ const App = () => {
       }
     }
     setIsPlaying(false);
-  }, []);
+  }, [clearScheduledStop]);
 
   const handleDownloadMidi = () => {
     if (!composition) return;
