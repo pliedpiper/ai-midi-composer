@@ -1,0 +1,4 @@
+{
+  "name": "AI MIDI Composer",
+  "description": "A web-based AI music generator that uses OpenRouter (OpenAI-compatible API) to create MIDI compositions, featuring a piano roll visualizer, instant playback, and MIDI file export."
+}
