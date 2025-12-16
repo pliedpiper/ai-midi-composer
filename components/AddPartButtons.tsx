@@ -1,11 +1,11 @@
 import React from 'react';
-import { Loader2, Plus } from 'lucide-react';
+import { Loader2, Plus, Music2, Piano, AudioWaveform } from 'lucide-react';
 import { PartType } from '../types';
 
-const PART_TYPES: { type: PartType; label: string }[] = [
-  { type: 'melody', label: 'Melody' },
-  { type: 'chords', label: 'Chords' },
-  { type: 'bass', label: 'Bass' },
+const PART_TYPES: { type: PartType; label: string; icon: typeof Music2 }[] = [
+  { type: 'melody', label: 'Melody', icon: Music2 },
+  { type: 'chords', label: 'Chords', icon: Piano },
+  { type: 'bass', label: 'Bass', icon: AudioWaveform },
 ];
 
 interface AddPartButtonsProps {
@@ -15,37 +15,50 @@ interface AddPartButtonsProps {
 
 const AddPartButtons: React.FC<AddPartButtonsProps> = ({ addingPart, onAddPart }) => {
   return (
-    <div 
-      className="flex items-center gap-2 px-4 py-3 rounded-b"
-      style={{ 
-        background: 'var(--bg-secondary)', 
-        borderBottom: '1px solid var(--border)',
-        borderLeft: '1px solid var(--border)',
-        borderRight: '1px solid var(--border)'
+    <div
+      className="flex items-center gap-3 px-5 py-4"
+      style={{
+        background: 'var(--bg-secondary)',
+        borderTop: '1px solid var(--border-subtle)'
       }}
     >
-      <span className="text-xs" style={{ color: 'var(--text-muted)' }}>Add:</span>
-      {PART_TYPES.map(({ type, label }) => (
-        <button
-          key={type}
-          onClick={() => onAddPart(type)}
-          disabled={addingPart !== null}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded transition-colors"
-          style={{ 
-            background: 'var(--bg-tertiary)', 
-            color: addingPart === type ? 'var(--accent)' : 'var(--text-secondary)',
-            opacity: addingPart !== null && addingPart !== type ? 0.5 : 1,
-            cursor: addingPart !== null ? 'not-allowed' : 'pointer'
-          }}
-        >
-          {addingPart === type ? (
-            <Loader2 className="w-3 h-3 animate-spin" />
-          ) : (
-            <Plus className="w-3 h-3" />
-          )}
-          {label}
-        </button>
-      ))}
+      <span className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>
+        Add part:
+      </span>
+      <div className="flex items-center gap-2">
+        {PART_TYPES.map(({ type, label, icon: Icon }) => {
+          const isActive = addingPart === type;
+          const isDisabled = addingPart !== null && !isActive;
+
+          return (
+            <button
+              key={type}
+              onClick={() => onAddPart(type)}
+              disabled={addingPart !== null}
+              className="btn flex items-center gap-2 px-4 py-2 text-xs font-medium rounded-lg transition-all"
+              style={{
+                background: isActive
+                  ? 'var(--accent-glow)'
+                  : 'var(--bg-primary)',
+                color: isActive ? 'var(--accent)' : 'var(--text-secondary)',
+                border: isActive
+                  ? '1px solid var(--accent)'
+                  : '1px solid var(--border)',
+                opacity: isDisabled ? 0.4 : 1,
+                cursor: addingPart !== null ? 'not-allowed' : 'pointer',
+                boxShadow: isActive ? '0 0 15px rgba(61, 139, 255, 0.15)' : 'none'
+              }}
+            >
+              {isActive ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <Icon className="w-3.5 h-3.5" />
+              )}
+              {label}
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 };

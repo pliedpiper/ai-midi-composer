@@ -103,36 +103,52 @@ const App = () => {
   return (
     <div className="min-h-screen" style={{ background: 'var(--bg-primary)' }}>
       {/* Header */}
-      <header style={{ 
-        background: 'var(--bg-secondary)', 
-        borderBottom: '1px solid var(--border)' 
-      }}>
-        <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
-          <h1 className="font-mono text-sm font-medium tracking-tight" style={{ color: 'var(--text-primary)' }}>
-            midi-composer
-          </h1>
-          <select
-            value={modelId}
-            onChange={(e) => {
-              const next = e.target.value;
-              setModelId(next);
-              localStorage.setItem("selectedModelId", next);
-            }}
-            className="font-mono text-xs px-2 py-1 rounded border-none"
-            style={{ 
-              background: 'var(--bg-tertiary)', 
-              color: 'var(--text-secondary)',
-              maxWidth: '200px'
-            }}
-          >
-            {availableModels.map((m) => (
-              <option key={m.id} value={m.id}>{m.id}</option>
-            ))}
-          </select>
+      <header className="header sticky top-0 z-50">
+        <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div
+              className="w-8 h-8 rounded-lg flex items-center justify-center"
+              style={{
+                background: 'linear-gradient(135deg, var(--accent) 0%, var(--accent-dim) 100%)',
+                boxShadow: 'var(--shadow-glow)'
+              }}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M9 18V5l12-2v13" />
+                <circle cx="6" cy="18" r="3" />
+                <circle cx="18" cy="16" r="3" />
+              </svg>
+            </div>
+            <h1 className="font-mono text-sm font-semibold tracking-tight" style={{ color: 'var(--text-primary)' }}>
+              midi-composer
+            </h1>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-xs" style={{ color: 'var(--text-muted)' }}>Model:</span>
+            <select
+              value={modelId}
+              onChange={(e) => {
+                const next = e.target.value;
+                setModelId(next);
+                localStorage.setItem("selectedModelId", next);
+              }}
+              className="font-mono text-xs px-3 py-1.5 rounded-lg cursor-pointer transition-all"
+              style={{
+                background: 'var(--bg-primary)',
+                color: 'var(--text-secondary)',
+                border: '1px solid var(--border)',
+                maxWidth: '220px'
+              }}
+            >
+              {availableModels.map((m) => (
+                <option key={m.id} value={m.id}>{m.id}</option>
+              ))}
+            </select>
+          </div>
         </div>
       </header>
 
-      <main className="max-w-4xl mx-auto px-4 py-8">
+      <main className="max-w-4xl mx-auto px-6 py-10">
         <PromptInput
           prompt={prompt}
           onPromptChange={setPrompt}
@@ -156,16 +172,28 @@ const App = () => {
 
         {/* Empty State */}
         {!composition && !loading && (
-          <div 
-            className="rounded py-24 text-center"
-            style={{ 
-              background: 'var(--bg-secondary)', 
-              border: '1px dashed var(--border)' 
-            }}
-          >
-            <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
-              Generated MIDI will appear here
-            </p>
+          <div className="empty-state py-20 text-center">
+            <div className="relative z-10">
+              <div
+                className="w-16 h-16 mx-auto mb-4 rounded-2xl flex items-center justify-center"
+                style={{
+                  background: 'var(--bg-tertiary)',
+                  border: '1px solid var(--border)'
+                }}
+              >
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M9 18V5l12-2v13" />
+                  <circle cx="6" cy="18" r="3" />
+                  <circle cx="18" cy="16" r="3" />
+                </svg>
+              </div>
+              <p className="text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
+                No composition yet
+              </p>
+              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                Describe your music above and click Generate
+              </p>
+            </div>
           </div>
         )}
       </main>
