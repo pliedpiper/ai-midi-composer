@@ -23,7 +23,6 @@ const beatsToTransportTime = (beats: number): string => {
 interface UsePlaybackOptions {
   notes: NoteEvent[];
   bpm: number;
-  onPlaybackEnd?: () => void;
 }
 
 interface UsePlaybackReturn {
@@ -32,19 +31,10 @@ interface UsePlaybackReturn {
   stopPlayback: () => void;
 }
 
-export const usePlayback = ({ notes, bpm, onPlaybackEnd }: UsePlaybackOptions): UsePlaybackReturn => {
+export const usePlayback = ({ notes, bpm }: UsePlaybackOptions): UsePlaybackReturn => {
   const [isPlaying, setIsPlaying] = useState(false);
   const synthRef = useRef<any>(null);
   const partRef = useRef<any>(null);
-  const stopEventIdRef = useRef<number | null>(null);
-
-  const clearScheduledStop = useCallback(() => {
-    if (!window.Tone) return;
-    if (stopEventIdRef.current != null) {
-      window.Tone.Transport.clear(stopEventIdRef.current);
-      stopEventIdRef.current = null;
-    }
-  }, []);
 
   // Initialize synth on mount
   useEffect(() => {
@@ -64,7 +54,6 @@ export const usePlayback = ({ notes, bpm, onPlaybackEnd }: UsePlaybackOptions): 
 
   const stopPlayback = useCallback(() => {
     if (window.Tone) {
-      clearScheduledStop();
       window.Tone.Transport.stop();
       window.Tone.Transport.position = 0;
       if (partRef.current) {
@@ -73,14 +62,13 @@ export const usePlayback = ({ notes, bpm, onPlaybackEnd }: UsePlaybackOptions): 
       }
     }
     setIsPlaying(false);
-  }, [clearScheduledStop]);
+  }, []);
 
   const startPlayback = useCallback(async () => {
     if (notes.length === 0 || !window.Tone) return;
     await window.Tone.start();
 
     if (synthRef.current) {
-      clearScheduledStop();
       if (partRef.current) {
         partRef.current.dispose();
       }
@@ -96,30 +84,27 @@ export const usePlayback = ({ notes, bpm, onPlaybackEnd }: UsePlaybackOptions): 
 
       partRef.current = new window.Tone.Part((time: any, value: any) => {
         synthRef.current.triggerAttackRelease(
-          value.note, 
-          value.duration, 
-          time, 
+          value.note,
+          value.duration,
+          time,
           value.velocity
         );
-      }, toneEvents).start(0);
+      }, toneEvents);
 
       const endBeats = notes.reduce(
         (max, n) => Math.max(max, n.startTime + n.duration),
         0
       );
-      const tailSeconds = 1.25;
-      const tailBeats = (tailSeconds * bpm) / 60;
-      
-      stopEventIdRef.current = window.Tone.Transport.scheduleOnce(() => {
-        stopEventIdRef.current = null;
-        stopPlayback();
-        onPlaybackEnd?.();
-      }, beatsToTransportTime(endBeats + tailBeats));
+
+      // Enable looping
+      partRef.current.loop = true;
+      partRef.current.loopEnd = beatsToTransportTime(endBeats);
+      partRef.current.start(0);
 
       window.Tone.Transport.start();
       setIsPlaying(true);
     }
-  }, [notes, bpm, clearScheduledStop, stopPlayback, onPlaybackEnd]);
+  }, [notes, bpm]);
 
   // Clean up on unmount
   useEffect(() => {

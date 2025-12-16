@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 import { Loader2, AlertCircle } from 'lucide-react';
 
 interface PromptInputProps {
@@ -19,11 +19,27 @@ const PromptInput: React.FC<PromptInputProps> = ({
   error,
 }) => {
   const isDisabled = loading || !prompt.trim() || disabled;
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    const textarea = textareaRef.current;
+    if (textarea) {
+      textarea.style.height = 'auto';
+      textarea.style.height = `${textarea.scrollHeight}px`;
+    }
+  }, [prompt]);
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      if (!isDisabled) onGenerate();
+    }
+  };
 
   return (
     <div className="mb-10">
       <div
-        className="flex gap-3 p-2 rounded-xl transition-all"
+        className="flex items-start gap-3 p-2 rounded-xl transition-all"
         style={{
           background: 'var(--bg-secondary)',
           border: '1px solid var(--border)',
@@ -31,18 +47,20 @@ const PromptInput: React.FC<PromptInputProps> = ({
         }}
       >
         <div className="flex-1 relative">
-          <input
-            type="text"
+          <textarea
+            ref={textareaRef}
             value={prompt}
             onChange={(e) => onPromptChange(e.target.value)}
             placeholder="Describe the music you want to create..."
-            className="w-full px-4 py-3 text-sm rounded-lg input"
+            className="w-full px-4 py-3 text-sm rounded-lg input resize-none overflow-hidden"
             style={{
               background: 'var(--bg-primary)',
               border: '1px solid transparent',
-              color: 'var(--text-primary)'
+              color: 'var(--text-primary)',
+              minHeight: '46px'
             }}
-            onKeyDown={(e) => e.key === 'Enter' && !isDisabled && onGenerate()}
+            rows={1}
+            onKeyDown={handleKeyDown}
           />
         </div>
         <button
