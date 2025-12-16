@@ -1,5 +1,6 @@
 import { useRef, useEffect, useCallback, useState } from 'react';
 import { NoteEvent } from '../types';
+import { AUDIO } from '../constants';
 
 const beatsToTransportTime = (beats: number): string => {
   const safeBeats = Number.isFinite(beats) ? Math.max(0, beats) : 0;
@@ -20,9 +21,66 @@ const beatsToTransportTime = (beats: number): string => {
   return `${bars}:${quarters}:${sixteenths}`;
 };
 
+// Type definitions for Tone.js objects we use
+interface TonePolySynth {
+  toDestination: () => TonePolySynth;
+  connect: (node: ToneEffect) => TonePolySynth;
+  triggerAttackRelease: (
+    note: string,
+    duration: string,
+    time: number,
+    velocity: number
+  ) => void;
+  dispose: () => void;
+}
+
+interface ToneEffect {
+  toDestination: () => ToneEffect;
+  dispose: () => void;
+}
+
+interface TonePart {
+  loop: boolean;
+  loopEnd: string;
+  start: (time: number) => void;
+  dispose: () => void;
+}
+
+interface ToneTransport {
+  bpm: { value: number };
+  position: number;
+  start: () => void;
+  stop: () => void;
+}
+
+interface ToneFrequencyFn {
+  (note: number, type: string): { toNote: () => string };
+}
+
+interface ToneNamespace {
+  start: () => Promise<void>;
+  PolySynth: new (synth: unknown, options: unknown) => TonePolySynth;
+  Synth: unknown;
+  Reverb: new (decay: number) => ToneEffect;
+  Part: new (
+    callback: (time: number, value: ToneEventValue) => void,
+    events: ToneEventValue[]
+  ) => TonePart;
+  Transport: ToneTransport;
+  Frequency: ToneFrequencyFn;
+}
+
+interface ToneEventValue {
+  time: string;
+  note: string;
+  duration: string;
+  velocity: number;
+}
+
 interface UsePlaybackOptions {
   notes: NoteEvent[];
   bpm: number;
+  onError?: (error: string) => void;
 }
 
 interface UsePlaybackReturn {
@@ -31,31 +89,54 @@ interface UsePlaybackReturn {
   stopPlayback: () => void;
 }
 
-export const usePlayback = ({ notes, bpm }: UsePlaybackOptions): UsePlaybackReturn => {
-  const [isPlaying, setIsPlaying] = useState(false);
-  const synthRef = useRef<any>(null);
-  const partRef = useRef<any>(null);
+/**
+ * Safely gets the Tone.js namespace from window.
+ * Returns null if Tone.js is not loaded.
+ */
+const getTone = (): ToneNamespace | null => {
+  if (typeof window !== 'undefined' && window.Tone) {
+    return window.Tone as ToneNamespace;
+  }
+  return null;
+};
 
-  // Initialize synth on mount
+export const usePlayback = ({ notes, bpm, onError }: UsePlaybackOptions): UsePlaybackReturn => {
+  const [isPlaying, setIsPlaying] = useState(false);
+  const synthRef = useRef<TonePolySynth | null>(null);
+  const reverbRef = useRef<ToneEffect | null>(null);
+  const partRef = useRef<TonePart | null>(null);
+
+  // Initialize synth and effects on mount
   useEffect(() => {
-    if (window.Tone) {
-      synthRef.current = new window.Tone.PolySynth(window.Tone.Synth, {
+    const Tone = getTone();
+    if (!Tone) return;
+
+    try {
+      synthRef.current = new Tone.PolySynth(Tone.Synth, {
         oscillator: { type: "triangle" },
         envelope: { attack: 0.02, decay: 0.1, sustain: 0.3, release: 1 }
       }).toDestination();
-      
-      const reverb = new window.Tone.Reverb(2).toDestination();
-      synthRef.current.connect(reverb);
+
+      reverbRef.current = new Tone.Reverb(AUDIO.REVERB_DECAY).toDestination();
+      synthRef.current.connect(reverbRef.current);
+    } catch (e) {
+      onError?.(`Failed to initialize audio: ${e instanceof Error ? e.message : 'unknown error'}`);
     }
+
     return () => {
+      // Dispose both synth and reverb to prevent memory leaks
       synthRef.current?.dispose();
+      synthRef.current = null;
+      reverbRef.current?.dispose();
+      reverbRef.current = null;
     };
-  }, []);
+  }, [onError]);
 
   const stopPlayback = useCallback(() => {
-    if (window.Tone) {
-      window.Tone.Transport.stop();
-      window.Tone.Transport.position = 0;
+    const Tone = getTone();
+    if (Tone) {
+      Tone.Transport.stop();
+      Tone.Transport.position = 0;
       if (partRef.current) {
         partRef.current.dispose();
         partRef.current = null;
@@ -65,25 +146,45 @@ export const usePlayback = ({ notes, bpm }: UsePlaybackOptions): UsePlaybackRetu
   }, []);
 
   const startPlayback = useCallback(async () => {
-    if (notes.length === 0 || !window.Tone) return;
-    await window.Tone.start();
+    if (notes.length === 0) {
+      return;
+    }
 
-    if (synthRef.current) {
+    const Tone = getTone();
+    if (!Tone) {
+      onError?.('Audio engine not loaded. Please refresh the page.');
+      return;
+    }
+
+    try {
+      // Tone.start() is required for browser autoplay policy compliance
+      await Tone.start();
+    } catch (e) {
+      onError?.(`Failed to start audio: ${e instanceof Error ? e.message : 'Browser blocked audio playback. Click anywhere and try again.'}`);
+      return;
+    }
+
+    if (!synthRef.current) {
+      onError?.('Synthesizer not initialized. Please refresh the page.');
+      return;
+    }
+
+    try {
       if (partRef.current) {
         partRef.current.dispose();
       }
 
-      window.Tone.Transport.bpm.value = bpm;
+      Tone.Transport.bpm.value = bpm;
 
-      const toneEvents = notes.map(n => ({
+      const toneEvents: ToneEventValue[] = notes.map(n => ({
         time: beatsToTransportTime(n.startTime),
-        note: window.Tone.Frequency(n.note, "midi").toNote(),
+        note: Tone.Frequency(n.note, "midi").toNote(),
         duration: beatsToTransportTime(n.duration),
         velocity: n.velocity / 127
       }));
 
-      partRef.current = new window.Tone.Part((time: any, value: any) => {
-        synthRef.current.triggerAttackRelease(
+      partRef.current = new Tone.Part((time: number, value: ToneEventValue) => {
+        synthRef.current?.triggerAttackRelease(
           value.note,
           value.duration,
           time,
@@ -101,10 +202,12 @@ export const usePlayback = ({ notes, bpm }: UsePlaybackOptions): UsePlaybackRetu
       partRef.current.loopEnd = beatsToTransportTime(endBeats);
       partRef.current.start(0);
 
-      window.Tone.Transport.start();
+      Tone.Transport.start();
       setIsPlaying(true);
+    } catch (e) {
+      onError?.(`Playback error: ${e instanceof Error ? e.message : 'unknown error'}`);
     }
-  }, [notes, bpm]);
+  }, [notes, bpm, onError]);
 
   // Clean up on unmount
   useEffect(() => {
@@ -115,4 +218,3 @@ export const usePlayback = ({ notes, bpm }: UsePlaybackOptions): UsePlaybackRetu
 
   return { isPlaying, startPlayback, stopPlayback };
 };
-

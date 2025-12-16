@@ -1,12 +1,12 @@
 import { NoteEvent } from '../types';
+import { AUDIO } from '../constants';
 
 /**
  * Encodes an array of NoteEvents into a Standard MIDI File (Type 0).
  * This is a pure binary construction to avoid heavy external dependencies.
  */
-export const createMidiFile = (notes: NoteEvent[], bpm: number = 120): Blob => {
-  // Constants
-  const TICKS_PER_BEAT = 480;
+export const createMidiFile = (notes: NoteEvent[], bpm: number = AUDIO.DEFAULT_BPM): Blob => {
+  const { TICKS_PER_BEAT } = AUDIO;
   
   // Helper: Write variable length quantity
   const writeVarInt = (value: number): number[] => {

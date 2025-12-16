@@ -1,5 +1,6 @@
 import React, { useMemo, useRef, useEffect } from 'react';
 import { NoteEvent } from '../types';
+import { PIANO_ROLL } from '../constants';
 
 interface PianoRollProps {
   notes: NoteEvent[];
@@ -9,25 +10,22 @@ interface PianoRollProps {
 }
 
 const PianoRoll: React.FC<PianoRollProps> = ({ notes, isPlaying, bpm }) => {
-  const NOTE_HEIGHT = 10;
-  const BEAT_WIDTH = 32;
+  const { NOTE_HEIGHT, BEAT_WIDTH, MIN_NOTE, MAX_NOTE, DEFAULT_MAX_TIME } = PIANO_ROLL;
+  const TOTAL_NOTES = MAX_NOTE - MIN_NOTE + 1;
   const playheadRef = useRef<HTMLDivElement>(null);
   const animationRef = useRef<number | null>(null);
   const startTimeRef = useRef<number | null>(null);
-  const MIN_NOTE = 36;    // C2
-  const MAX_NOTE = 96;    // C7
-  const TOTAL_NOTES = MAX_NOTE - MIN_NOTE + 1;
 
   // Calculate display width for canvas (add some padding)
   const maxTime = useMemo(() => {
-    if (notes.length === 0) return 16;
+    if (notes.length === 0) return DEFAULT_MAX_TIME;
     const lastNote = notes[notes.length - 1];
     return Math.ceil(lastNote.startTime + lastNote.duration) + 1;
-  }, [notes]);
+  }, [notes, DEFAULT_MAX_TIME]);
 
   // Calculate actual loop duration (same logic as usePlayback)
   const loopDuration = useMemo(() => {
-    if (notes.length === 0) return 16;
+    if (notes.length === 0) return DEFAULT_MAX_TIME;
     return notes.reduce((max, n) => Math.max(max, n.startTime + n.duration), 0);
   }, [notes]);
 
@@ -128,7 +126,7 @@ const PianoRoll: React.FC<PianoRollProps> = ({ notes, isPlaying, bpm }) => {
           ))}
 
           {/* Notes */}
-          {notes.map((note, idx) => {
+          {notes.map((note) => {
             const rowIndex = MAX_NOTE - note.note;
             if (rowIndex < 0 || rowIndex >= TOTAL_NOTES) return null;
 
@@ -136,7 +134,7 @@ const PianoRoll: React.FC<PianoRollProps> = ({ notes, isPlaying, bpm }) => {
 
             return (
               <div
-                key={idx}
+                key={note.id}
                 className="absolute transition-all"
                 style={{
                   left: `${note.startTime * BEAT_WIDTH}px`,

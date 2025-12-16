@@ -4,6 +4,7 @@ import { availableModels, assertModelListPresent, isValidModelId } from './servi
 import { usePlayback, useComposition } from './hooks';
 import PromptInput from './components/PromptInput';
 import CompositionCard from './components/CompositionCard';
+import { AUDIO } from './constants';
 
 const App = () => {
   const [prompt, setPrompt] = useState('');
@@ -21,15 +22,16 @@ const App = () => {
 
   const { isPlaying, startPlayback, stopPlayback } = usePlayback({
     notes: composition?.notes ?? [],
-    bpm: composition?.bpm ?? 120,
+    bpm: composition?.bpm ?? AUDIO.DEFAULT_BPM,
+    onError: setError,
   });
 
   // Initialize model selection
   useEffect(() => {
     try {
       assertModelListPresent();
-    } catch (e: any) {
-      setError(e.message || "Failed to load models.txt");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to load models.txt");
       if (availableModels.length > 0) {
         setModelId(availableModels[0]!.id);
       }
