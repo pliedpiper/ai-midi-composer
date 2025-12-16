@@ -131,6 +131,7 @@ export const VariationPicker: React.FC<VariationPickerProps> = ({
                       notes={variation.composition.notes}
                       isPlaying={isPlaying}
                       bpm={variation.composition.bpm}
+                      height={128}
                     />
                   </div>
 

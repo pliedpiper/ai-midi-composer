@@ -1,6 +1,6 @@
 import React, { useMemo, useRef, useEffect } from 'react';
 import { NoteEvent, PartType } from '../types';
-import { PIANO_ROLL } from '../constants';
+import { MIDI, PIANO_ROLL } from '../constants';
 
 // Color mapping for different parts
 const PART_COLORS: Record<PartType, { from: string; to: string }> = {
@@ -14,13 +14,46 @@ const DEFAULT_COLOR = { from: '61, 139, 255', to: '42, 95, 168' }; // Blue defau
 interface PianoRollProps {
   notes: NoteEvent[];
   isPlaying: boolean;
-  currentBeat?: number;
   bpm: number;
+  height?: number;
 }
 
-const PianoRoll: React.FC<PianoRollProps> = ({ notes, isPlaying, bpm }) => {
-  const { NOTE_HEIGHT, BEAT_WIDTH, MIN_NOTE, MAX_NOTE, DEFAULT_MAX_TIME } = PIANO_ROLL;
-  const TOTAL_NOTES = MAX_NOTE - MIN_NOTE + 1;
+const PianoRoll: React.FC<PianoRollProps> = ({ notes, isPlaying, bpm, height }) => {
+  const {
+    NOTE_HEIGHT: DEFAULT_NOTE_HEIGHT,
+    BEAT_WIDTH,
+    MIN_NOTE: DEFAULT_MIN_NOTE,
+    MAX_NOTE: DEFAULT_MAX_NOTE,
+    DEFAULT_MAX_TIME,
+  } = PIANO_ROLL;
+  const { MIN_NOTE: MIDI_MIN_NOTE, MAX_NOTE: MIDI_MAX_NOTE } = MIDI;
+  const viewportHeight = height ?? 320;
+  const VERTICAL_INSET = 6;
+
+  const { displayMinNote, displayMaxNote } = useMemo(() => {
+    if (notes.length === 0) {
+      return { displayMinNote: DEFAULT_MIN_NOTE, displayMaxNote: DEFAULT_MAX_NOTE };
+    }
+
+    let minNote = Infinity;
+    let maxNote = -Infinity;
+    for (const note of notes) {
+      if (note.note < minNote) minNote = note.note;
+      if (note.note > maxNote) maxNote = note.note;
+    }
+
+    const paddingSemitones = 2;
+    minNote = Math.max(MIDI_MIN_NOTE, minNote - paddingSemitones);
+    maxNote = Math.min(MIDI_MAX_NOTE, maxNote + paddingSemitones);
+
+    const maxToNextC = (12 - (maxNote % 12)) % 12;
+    const roundedMaxNote = Math.min(MIDI_MAX_NOTE, maxNote + maxToNextC);
+
+    const roundedMinNote = Math.max(MIDI_MIN_NOTE, minNote - (minNote % 12));
+    return { displayMinNote: roundedMinNote, displayMaxNote: roundedMaxNote };
+  }, [notes, DEFAULT_MIN_NOTE, DEFAULT_MAX_NOTE, MIDI_MIN_NOTE, MIDI_MAX_NOTE]);
+
+  const TOTAL_NOTES = displayMaxNote - displayMinNote + 1;
   const playheadRef = useRef<HTMLDivElement>(null);
   const animationRef = useRef<number | null>(null);
   const startTimeRef = useRef<number | null>(null);
@@ -28,18 +61,24 @@ const PianoRoll: React.FC<PianoRollProps> = ({ notes, isPlaying, bpm }) => {
   // Calculate display width for canvas (add some padding)
   const maxTime = useMemo(() => {
     if (notes.length === 0) return DEFAULT_MAX_TIME;
-    const lastNote = notes[notes.length - 1];
-    return Math.ceil(lastNote.startTime + lastNote.duration) + 1;
+    const endTime = notes.reduce((max, n) => Math.max(max, n.startTime + n.duration), 0);
+    return Math.ceil(endTime) + 1;
   }, [notes, DEFAULT_MAX_TIME]);
 
   // Calculate actual loop duration (same logic as usePlayback)
   const loopDuration = useMemo(() => {
     if (notes.length === 0) return DEFAULT_MAX_TIME;
     return notes.reduce((max, n) => Math.max(max, n.startTime + n.duration), 0);
-  }, [notes]);
+  }, [notes, DEFAULT_MAX_TIME]);
 
   const canvasWidth = maxTime * BEAT_WIDTH;
-  const canvasHeight = TOTAL_NOTES * NOTE_HEIGHT;
+  const usableHeight = Math.max(viewportHeight - VERTICAL_INSET * 2, 1);
+  const rowHeightUncapped = usableHeight / Math.max(TOTAL_NOTES, 1);
+  const rowHeight = Math.min(DEFAULT_NOTE_HEIGHT, rowHeightUncapped);
+  const gridHeight = TOTAL_NOTES * rowHeight;
+  const gridTop = Math.max(VERTICAL_INSET, (viewportHeight - gridHeight) / 2);
+  const noteVerticalPadding = Math.min(1, rowHeight * 0.2);
+  const noteBlockHeight = Math.max(rowHeight - noteVerticalPadding * 2, 1);
 
   // Direct DOM animation for smooth playhead movement
   useEffect(() => {
@@ -78,6 +117,7 @@ const PianoRoll: React.FC<PianoRollProps> = ({ notes, isPlaying, bpm }) => {
     return () => {
       if (animationRef.current) {
         cancelAnimationFrame(animationRef.current);
+        animationRef.current = null;
       }
     };
   }, [isPlaying, bpm, loopDuration, BEAT_WIDTH]);
@@ -98,12 +138,12 @@ const PianoRoll: React.FC<PianoRollProps> = ({ notes, isPlaying, bpm }) => {
         background: 'linear-gradient(180deg, #0c0c0c 0%, #080808 100%)'
       }}
     >
-      <div className="w-full overflow-x-auto piano-roll-scroll" style={{ height: '320px' }}>
+      <div className="w-full overflow-x-auto piano-roll-scroll" style={{ height: `${viewportHeight}px` }}>
         <div
           className="relative"
           style={{
             width: `${canvasWidth}px`,
-            height: `${canvasHeight}px`,
+            height: `${viewportHeight}px`,
           }}
         >
           {/* Grid lines */}
@@ -127,7 +167,7 @@ const PianoRoll: React.FC<PianoRollProps> = ({ notes, isPlaying, bpm }) => {
               key={i}
               className="absolute left-0 right-0"
               style={{
-                top: `${i * 12 * NOTE_HEIGHT}px`,
+                top: `${gridTop + i * 12 * rowHeight}px`,
                 height: '1px',
                 background: 'rgba(255, 255, 255, 0.06)'
               }}
@@ -136,7 +176,7 @@ const PianoRoll: React.FC<PianoRollProps> = ({ notes, isPlaying, bpm }) => {
 
           {/* Notes */}
           {notes.map((note) => {
-            const rowIndex = MAX_NOTE - note.note;
+            const rowIndex = displayMaxNote - note.note;
             if (rowIndex < 0 || rowIndex >= TOTAL_NOTES) return null;
 
             const noteOpacity = 0.5 + (note.velocity / 127) * 0.5;
@@ -148,9 +188,9 @@ const PianoRoll: React.FC<PianoRollProps> = ({ notes, isPlaying, bpm }) => {
                 className="absolute transition-all"
                 style={{
                   left: `${note.startTime * BEAT_WIDTH}px`,
-                  top: `${rowIndex * NOTE_HEIGHT + 1}px`,
+                  top: `${gridTop + rowIndex * rowHeight + noteVerticalPadding}px`,
                   width: `${Math.max(note.duration * BEAT_WIDTH - 1, 4)}px`,
-                  height: `${NOTE_HEIGHT - 2}px`,
+                  height: `${noteBlockHeight}px`,
                   background: `linear-gradient(135deg, rgba(${colors.from}, ${noteOpacity}) 0%, rgba(${colors.to}, ${noteOpacity}) 100%)`,
                   borderRadius: '3px',
                   boxShadow: `0 1px 3px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1)`
@@ -188,9 +228,9 @@ const PianoRoll: React.FC<PianoRollProps> = ({ notes, isPlaying, bpm }) => {
         }}
       >
         {Array.from({ length: Math.ceil(TOTAL_NOTES / 12) }).map((_, i) => {
-          // MIDI note at this row = MAX_NOTE - (i * 12)
+          // MIDI note at this row = displayMaxNote - (i * 12)
           // Octave number = floor(midiNote / 12) - 1 (standard MIDI convention: C4 = 60)
-          const midiNoteAtRow = MAX_NOTE - (i * 12);
+          const midiNoteAtRow = displayMaxNote - (i * 12);
           const octave = Math.floor(midiNoteAtRow / 12) - 1;
           return (
             <div
@@ -198,7 +238,7 @@ const PianoRoll: React.FC<PianoRollProps> = ({ notes, isPlaying, bpm }) => {
               className="font-mono text-[10px] font-medium pl-2"
               style={{
                 position: 'absolute',
-                top: `${i * 12 * NOTE_HEIGHT + 1}px`,
+                top: `${gridTop + i * 12 * rowHeight + noteVerticalPadding}px`,
                 color: 'var(--text-muted)',
                 textShadow: '0 1px 2px rgba(0, 0, 0, 0.5)'
               }}
