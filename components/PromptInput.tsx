@@ -1,10 +1,13 @@
-import React, { useRef, useEffect } from 'react';
-import { Loader2, AlertCircle } from 'lucide-react';
+import React, { useRef, useEffect, useState } from 'react';
+import { Loader2, AlertCircle, Settings, ChevronDown } from 'lucide-react';
+import { BarCount } from '../types';
+import { GENERATION } from '../constants';
+import { LengthControl } from './LengthControl';
 
 interface PromptInputProps {
   prompt: string;
   onPromptChange: (value: string) => void;
-  onGenerate: () => void;
+  onGenerate: (barCount?: BarCount) => void;
   loading: boolean;
   disabled: boolean;
   error: string | null;
@@ -18,6 +21,8 @@ const PromptInput: React.FC<PromptInputProps> = ({
   disabled,
   error,
 }) => {
+  const [barCount, setBarCount] = useState<BarCount>(GENERATION.DEFAULT_BAR_COUNT as BarCount);
+  const [showOptions, setShowOptions] = useState(false);
   const isDisabled = loading || !prompt.trim() || disabled;
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -32,57 +37,89 @@ const PromptInput: React.FC<PromptInputProps> = ({
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      if (!isDisabled) onGenerate();
+      if (!isDisabled) onGenerate(barCount);
     }
+  };
+
+  const handleGenerate = () => {
+    onGenerate(barCount);
   };
 
   return (
     <div className="mb-10">
       <div
-        className="flex items-start gap-3 p-2 rounded-xl transition-all"
+        className="rounded-xl transition-all"
         style={{
           background: 'var(--bg-secondary)',
           border: '1px solid var(--border)',
           boxShadow: 'var(--shadow-md)'
         }}
       >
-        <div className="flex-1 relative">
-          <textarea
-            ref={textareaRef}
-            value={prompt}
-            onChange={(e) => onPromptChange(e.target.value)}
-            placeholder="Describe the music you want to create..."
-            className="w-full px-4 py-3 text-sm rounded-lg input resize-none overflow-hidden"
+        <div className="flex items-start gap-3 p-2">
+          <div className="flex-1 relative">
+            <textarea
+              ref={textareaRef}
+              value={prompt}
+              onChange={(e) => onPromptChange(e.target.value)}
+              placeholder="Describe the music you want to create..."
+              className="w-full px-4 py-3 text-sm rounded-lg input resize-none overflow-hidden"
+              style={{
+                background: 'var(--bg-primary)',
+                border: '1px solid transparent',
+                color: 'var(--text-primary)',
+                minHeight: '46px'
+              }}
+              rows={1}
+              onKeyDown={handleKeyDown}
+            />
+          </div>
+          <button
+            onClick={() => setShowOptions(!showOptions)}
+            className="p-3 rounded-lg transition-all"
             style={{
-              background: 'var(--bg-primary)',
-              border: '1px solid transparent',
-              color: 'var(--text-primary)',
-              minHeight: '46px'
+              background: showOptions ? 'var(--bg-tertiary)' : 'transparent',
+              color: showOptions ? 'var(--accent)' : 'var(--text-muted)',
             }}
-            rows={1}
-            onKeyDown={handleKeyDown}
-          />
+            title="Generation options"
+          >
+            <Settings className="w-4 h-4" />
+          </button>
+          <button
+            onClick={handleGenerate}
+            disabled={isDisabled}
+            className="btn btn-primary px-6 py-3 text-sm rounded-lg flex items-center gap-2"
+            style={{
+              background: isDisabled
+                ? 'var(--bg-tertiary)'
+                : 'linear-gradient(135deg, var(--accent) 0%, var(--accent-dim) 100%)',
+              color: isDisabled ? 'var(--text-muted)' : 'white',
+              boxShadow: isDisabled ? 'none' : 'var(--shadow-sm), 0 0 20px rgba(61, 139, 255, 0.15)',
+              cursor: isDisabled ? 'not-allowed' : 'pointer',
+              opacity: isDisabled ? 0.6 : 1
+            }}
+          >
+            {loading ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              'Generate'
+            )}
+          </button>
         </div>
-        <button
-          onClick={onGenerate}
-          disabled={isDisabled}
-          className="btn btn-primary px-6 py-3 text-sm rounded-lg flex items-center gap-2"
-          style={{
-            background: isDisabled
-              ? 'var(--bg-tertiary)'
-              : 'linear-gradient(135deg, var(--accent) 0%, var(--accent-dim) 100%)',
-            color: isDisabled ? 'var(--text-muted)' : 'white',
-            boxShadow: isDisabled ? 'none' : 'var(--shadow-sm), 0 0 20px rgba(61, 139, 255, 0.15)',
-            cursor: isDisabled ? 'not-allowed' : 'pointer',
-            opacity: isDisabled ? 0.6 : 1
-          }}
-        >
-          {loading ? (
-            <Loader2 className="w-4 h-4 animate-spin" />
-          ) : (
-            'Generate'
-          )}
-        </button>
+
+        {showOptions && (
+          <div
+            className="px-4 pb-3 pt-1 border-t animate-slide-down"
+            style={{ borderColor: 'var(--border-subtle)' }}
+          >
+            <div className="flex items-center gap-4">
+              <LengthControl
+                value={barCount}
+                onChange={setBarCount}
+                disabled={loading}
+              />
+            </div>
+          </div>
+        )}
       </div>
 
       {error && (
@@ -108,4 +145,3 @@ const PromptInput: React.FC<PromptInputProps> = ({
 };
 
 export default PromptInput;
-

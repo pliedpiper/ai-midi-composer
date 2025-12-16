@@ -1,6 +1,15 @@
 import React, { useMemo, useRef, useEffect } from 'react';
-import { NoteEvent } from '../types';
+import { NoteEvent, PartType } from '../types';
 import { PIANO_ROLL } from '../constants';
+
+// Color mapping for different parts
+const PART_COLORS: Record<PartType, { from: string; to: string }> = {
+  melody: { from: '61, 139, 255', to: '42, 95, 168' },   // Blue
+  chords: { from: '168, 85, 247', to: '124, 58, 237' },  // Purple
+  bass: { from: '34, 197, 94', to: '22, 163, 74' },      // Green
+};
+
+const DEFAULT_COLOR = { from: '61, 139, 255', to: '42, 95, 168' }; // Blue default
 
 interface PianoRollProps {
   notes: NoteEvent[];
@@ -131,6 +140,7 @@ const PianoRoll: React.FC<PianoRollProps> = ({ notes, isPlaying, bpm }) => {
             if (rowIndex < 0 || rowIndex >= TOTAL_NOTES) return null;
 
             const noteOpacity = 0.5 + (note.velocity / 127) * 0.5;
+            const colors = note.partType ? PART_COLORS[note.partType] : DEFAULT_COLOR;
 
             return (
               <div
@@ -141,11 +151,11 @@ const PianoRoll: React.FC<PianoRollProps> = ({ notes, isPlaying, bpm }) => {
                   top: `${rowIndex * NOTE_HEIGHT + 1}px`,
                   width: `${Math.max(note.duration * BEAT_WIDTH - 1, 4)}px`,
                   height: `${NOTE_HEIGHT - 2}px`,
-                  background: `linear-gradient(135deg, rgba(61, 139, 255, ${noteOpacity}) 0%, rgba(42, 95, 168, ${noteOpacity}) 100%)`,
+                  background: `linear-gradient(135deg, rgba(${colors.from}, ${noteOpacity}) 0%, rgba(${colors.to}, ${noteOpacity}) 100%)`,
                   borderRadius: '3px',
                   boxShadow: `0 1px 3px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1)`
                 }}
-                title={`MIDI ${note.note} · vel ${note.velocity}`}
+                title={`${note.partType || 'note'} · MIDI ${note.note} · vel ${note.velocity}`}
               />
             );
           })}

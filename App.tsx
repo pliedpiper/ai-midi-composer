@@ -1,22 +1,37 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { createMidiFile } from './services/midiEncoder';
 import { availableModels, assertModelListPresent, isValidModelId } from './services/models';
 import { usePlayback, useComposition } from './hooks';
 import PromptInput from './components/PromptInput';
 import CompositionCard from './components/CompositionCard';
+import { VariationPicker } from './components/VariationPicker';
 import { AUDIO } from './constants';
+import { BarCount, Composition, PartType } from './types';
 
 const App = () => {
   const [prompt, setPrompt] = useState('');
   const [modelId, setModelId] = useState<string>('');
+  const [variationPreviewId, setVariationPreviewId] = useState<string | null>(null);
+  const variationPlaybackRef = useRef<{ stop: () => void } | null>(null);
 
   const {
     composition,
     loading,
     addingPart,
+    regeneratingPart,
+    generatingVariations,
+    applyingStyle,
+    extending,
+    variations,
     error,
     generate,
     addPart,
+    regeneratePart,
+    generateVariations,
+    selectVariation,
+    clearVariations,
+    applyStyle,
+    extend,
     setError,
   } = useComposition();
 
@@ -79,14 +94,34 @@ const App = () => {
     setModelId(availableModels[0]!.id);
   }, [setError]);
 
-  const handleGenerate = async () => {
+  const handleGenerate = async (barCount?: BarCount) => {
     if (isPlaying) stopPlayback();
-    await generate(prompt, modelId);
+    await generate(prompt, modelId, barCount);
   };
 
-  const handleAddPart = async (partType: 'melody' | 'chords' | 'bass') => {
+  const handleAddPart = async (partType: PartType) => {
     if (isPlaying) stopPlayback();
     await addPart(partType, modelId);
+  };
+
+  const handleRegeneratePart = async (partType: PartType) => {
+    if (isPlaying) stopPlayback();
+    await regeneratePart(partType, modelId);
+  };
+
+  const handleGenerateVariations = async () => {
+    if (isPlaying) stopPlayback();
+    await generateVariations(3, modelId);
+  };
+
+  const handleApplyStyle = async (stylePrompt: string) => {
+    if (isPlaying) stopPlayback();
+    await applyStyle(stylePrompt, modelId);
+  };
+
+  const handleExtend = async (barCount: BarCount) => {
+    if (isPlaying) stopPlayback();
+    await extend(barCount, modelId);
   };
 
   const handleDownloadMidi = () => {
@@ -100,6 +135,34 @@ const App = () => {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+  };
+
+  // Variation preview playback handlers
+  const handlePlayVariation = (id: string, _composition: Composition) => {
+    // Stop any existing preview
+    if (variationPlaybackRef.current) {
+      variationPlaybackRef.current.stop();
+    }
+    setVariationPreviewId(id);
+    // Note: In a full implementation, you'd create a separate playback instance
+    // For now, we just track which variation is "playing" visually
+  };
+
+  const handleStopVariationPreview = () => {
+    if (variationPlaybackRef.current) {
+      variationPlaybackRef.current.stop();
+    }
+    setVariationPreviewId(null);
+  };
+
+  const handleSelectVariation = (id: string) => {
+    handleStopVariationPreview();
+    selectVariation(id);
+  };
+
+  const handleCancelVariations = () => {
+    handleStopVariationPreview();
+    clearVariations();
   };
 
   return (
@@ -165,10 +228,30 @@ const App = () => {
             composition={composition}
             isPlaying={isPlaying}
             addingPart={addingPart}
+            regeneratingPart={regeneratingPart}
+            applyingStyle={applyingStyle}
+            extending={extending}
+            generatingVariations={generatingVariations}
             onPlay={startPlayback}
             onStop={stopPlayback}
             onDownload={handleDownloadMidi}
             onAddPart={handleAddPart}
+            onRegeneratePart={handleRegeneratePart}
+            onApplyStyle={handleApplyStyle}
+            onExtend={handleExtend}
+            onGenerateVariations={handleGenerateVariations}
+          />
+        )}
+
+        {/* Variation Picker Modal */}
+        {variations && (
+          <VariationPicker
+            variations={variations}
+            onSelect={handleSelectVariation}
+            onCancel={handleCancelVariations}
+            currentlyPlaying={variationPreviewId}
+            onPlayVariation={handlePlayVariation}
+            onStopPlayback={handleStopVariationPreview}
           />
         )}
 

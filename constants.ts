@@ -26,6 +26,21 @@ export const AUDIO = {
 
 // API Constants
 export const API = {
-  TIMEOUT_MS: 60000,
+  TIMEOUT_MS: 120000, // 2 minutes - complex operations like variations need more time
   PROXY_URL: '/api/chat/completions',
+} as const;
+
+// Generation Constants
+export const GENERATION = {
+  DEFAULT_BAR_COUNT: 8,
+  BAR_COUNT_OPTIONS: [4, 8, 16, 32] as const,
+  BEATS_PER_BAR: 4,
+  DEFAULT_VARIATION_COUNT: 3,
+  STYLE_PRESETS: [
+    { id: 'jazzy', label: 'Jazzy', prompt: 'Add jazz elements with swing rhythms, blue notes, and extended chord voicings' },
+    { id: 'classical', label: 'Classical', prompt: 'Transform into a classical style with clear voice leading and traditional harmony' },
+    { id: 'syncopated', label: 'Syncopated', prompt: 'Add syncopation with off-beat accents and rhythmic displacement' },
+    { id: 'minimalist', label: 'Minimalist', prompt: 'Simplify to minimalist style with repetitive patterns and gradual changes' },
+    { id: 'dramatic', label: 'Dramatic', prompt: 'Add dramatic elements with dynamic contrasts and tension-building passages' },
+  ],
 } as const;
