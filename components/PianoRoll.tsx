@@ -18,10 +18,17 @@ const PianoRoll: React.FC<PianoRollProps> = ({ notes, isPlaying, bpm }) => {
   const MAX_NOTE = 96;    // C7
   const TOTAL_NOTES = MAX_NOTE - MIN_NOTE + 1;
 
+  // Calculate display width for canvas (add some padding)
   const maxTime = useMemo(() => {
     if (notes.length === 0) return 16;
     const lastNote = notes[notes.length - 1];
     return Math.ceil(lastNote.startTime + lastNote.duration) + 1;
+  }, [notes]);
+
+  // Calculate actual loop duration (same logic as usePlayback)
+  const loopDuration = useMemo(() => {
+    if (notes.length === 0) return 16;
+    return notes.reduce((max, n) => Math.max(max, n.startTime + n.duration), 0);
   }, [notes]);
 
   const canvasWidth = maxTime * BEAT_WIDTH;
@@ -49,7 +56,9 @@ const PianoRoll: React.FC<PianoRollProps> = ({ notes, isPlaying, bpm }) => {
       if (!playheadRef.current || startTimeRef.current === null) return;
 
       const elapsed = (performance.now() - startTimeRef.current) / 1000; // seconds
-      const currentBeat = elapsed * (bpm / 60);
+      const totalBeats = elapsed * (bpm / 60);
+      // Wrap around using modulo to handle looping
+      const currentBeat = loopDuration > 0 ? totalBeats % loopDuration : totalBeats;
       const position = currentBeat * BEAT_WIDTH;
 
       playheadRef.current.style.left = `${position}px`;
@@ -64,7 +73,7 @@ const PianoRoll: React.FC<PianoRollProps> = ({ notes, isPlaying, bpm }) => {
         cancelAnimationFrame(animationRef.current);
       }
     };
-  }, [isPlaying, bpm, BEAT_WIDTH]);
+  }, [isPlaying, bpm, loopDuration, BEAT_WIDTH]);
 
   // Generate beat markers
   const beatMarkers = useMemo(() => {
