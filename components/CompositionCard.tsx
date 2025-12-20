@@ -4,7 +4,9 @@ import PlayerControls from './PlayerControls';
 import AddPartButtons from './AddPartButtons';
 import { StyleTransferPanel } from './StyleTransferPanel';
 import { ContinuationPanel } from './ContinuationPanel';
-import { Composition, PartType, BarCount } from '../types';
+import { FilterPanel } from './FilterPanel';
+import { InstrumentSelector } from './InstrumentSelector';
+import { Composition, PartType, BarCount, FilterState } from '../types';
 import { Music, Shuffle, Loader2 } from 'lucide-react';
 
 interface CompositionCardProps {
@@ -15,14 +17,22 @@ interface CompositionCardProps {
   applyingStyle: boolean;
   extending: boolean;
   generatingVariations: boolean;
+  isExporting: boolean;
+  filterStates: FilterState[];
+  instrumentId: string;
   onPlay: () => void;
   onStop: () => void;
-  onDownload: () => void;
+  onDownloadMidi: () => void;
+  onDownloadWav: () => void;
   onAddPart: (partType: PartType) => void;
   onRegeneratePart: (partType: PartType) => void;
   onApplyStyle: (prompt: string) => void;
   onExtend: (bars: BarCount) => void;
   onGenerateVariations: () => void;
+  onToggleFilter: (filterId: string) => void;
+  onUpdateFilterParam: (filterId: string, paramKey: string, value: number) => void;
+  onResetFilters: () => void;
+  onSelectInstrument: (id: string) => void;
 }
 
 const CompositionCard: React.FC<CompositionCardProps> = ({
@@ -33,14 +43,22 @@ const CompositionCard: React.FC<CompositionCardProps> = ({
   applyingStyle,
   extending,
   generatingVariations,
+  isExporting,
+  filterStates,
+  instrumentId,
   onPlay,
   onStop,
-  onDownload,
+  onDownloadMidi,
+  onDownloadWav,
   onAddPart,
   onRegeneratePart,
   onApplyStyle,
   onExtend,
   onGenerateVariations,
+  onToggleFilter,
+  onUpdateFilterParam,
+  onResetFilters,
+  onSelectInstrument,
 }) => {
   // Determine which parts exist in composition
   const existingParts = useMemo(() => {
@@ -95,6 +113,13 @@ const CompositionCard: React.FC<CompositionCardProps> = ({
         </div>
 
         <div className="flex items-center gap-2">
+          {/* Instrument Selector */}
+          <InstrumentSelector
+            instrumentId={instrumentId}
+            onSelectInstrument={onSelectInstrument}
+            disabled={isAnyOperationInProgress}
+          />
+
           {/* Variations button */}
           <button
             onClick={onGenerateVariations}
@@ -120,7 +145,9 @@ const CompositionCard: React.FC<CompositionCardProps> = ({
             isPlaying={isPlaying}
             onPlay={onPlay}
             onStop={onStop}
-            onDownload={onDownload}
+            onDownloadMidi={onDownloadMidi}
+            onDownloadWav={onDownloadWav}
+            isExporting={isExporting}
           />
         </div>
       </div>
@@ -139,6 +166,15 @@ const CompositionCard: React.FC<CompositionCardProps> = ({
         onAddPart={onAddPart}
         onRegeneratePart={onRegeneratePart}
         existingParts={existingParts}
+      />
+
+      {/* Audio Effects Panel */}
+      <FilterPanel
+        filterStates={filterStates}
+        onToggleFilter={onToggleFilter}
+        onUpdateParam={onUpdateFilterParam}
+        onResetFilters={onResetFilters}
+        disabled={isAnyOperationInProgress}
       />
 
       {/* Continuation Panel */}

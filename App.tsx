@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createMidiFile } from './services/midiEncoder';
+import { exportToWav, downloadBlob } from './services/wavExporter';
 import { availableModels, assertModelListPresent, isValidModelId } from './services/models';
-import { usePlayback, useComposition } from './hooks';
+import { usePlayback, useComposition, useAudioEffects, useInstrument } from './hooks';
 import PromptInput from './components/PromptInput';
 import CompositionCard from './components/CompositionCard';
 import { VariationPicker } from './components/VariationPicker';
@@ -12,6 +13,7 @@ const App = () => {
   const [prompt, setPrompt] = useState('');
   const [modelId, setModelId] = useState<string>('');
   const [variationPreviewId, setVariationPreviewId] = useState<string | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
   const variationPlaybackRef = useRef<{ stop: () => void } | null>(null);
 
   const {
@@ -35,9 +37,23 @@ const App = () => {
     setError,
   } = useComposition();
 
+  const {
+    filterStates,
+    toggleFilter,
+    updateFilterParam,
+    resetFilters,
+  } = useAudioEffects();
+
+  const {
+    instrumentId,
+    setInstrumentId,
+  } = useInstrument();
+
   const { isPlaying, startPlayback, stopPlayback } = usePlayback({
     notes: composition?.notes ?? [],
     bpm: composition?.bpm ?? AUDIO.DEFAULT_BPM,
+    filterStates,
+    instrumentId,
     onError: setError,
   });
 
@@ -137,6 +153,25 @@ const App = () => {
     URL.revokeObjectURL(url);
   };
 
+  const handleDownloadWav = async () => {
+    if (!composition) return;
+
+    setIsExporting(true);
+    try {
+      const blob = await exportToWav({
+        notes: composition.notes,
+        bpm: composition.bpm,
+        filterStates,
+        instrumentId,
+      });
+      downloadBlob(blob, `${composition.title.replace(/\s+/g, '_')}.wav`);
+    } catch (e) {
+      setError(`Failed to export WAV: ${e instanceof Error ? e.message : 'unknown error'}`);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   // Variation preview playback handlers
   const handlePlayVariation = (id: string, _composition: Composition) => {
     // Stop any existing preview
@@ -232,14 +267,22 @@ const App = () => {
             applyingStyle={applyingStyle}
             extending={extending}
             generatingVariations={generatingVariations}
+            isExporting={isExporting}
+            filterStates={filterStates}
+            instrumentId={instrumentId}
             onPlay={startPlayback}
             onStop={stopPlayback}
-            onDownload={handleDownloadMidi}
+            onDownloadMidi={handleDownloadMidi}
+            onDownloadWav={handleDownloadWav}
             onAddPart={handleAddPart}
             onRegeneratePart={handleRegeneratePart}
             onApplyStyle={handleApplyStyle}
             onExtend={handleExtend}
             onGenerateVariations={handleGenerateVariations}
+            onToggleFilter={toggleFilter}
+            onUpdateFilterParam={updateFilterParam}
+            onResetFilters={resetFilters}
+            onSelectInstrument={setInstrumentId}
           />
         )}
 

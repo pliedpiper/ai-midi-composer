@@ -1,6 +1,7 @@
 import { useRef, useEffect, useCallback, useState } from 'react';
-import { NoteEvent } from '../types';
-import { AUDIO } from '../constants';
+import { NoteEvent, FilterState } from '../types';
+import { createEffectInstance, ToneEffectInstance } from '../services/audioFilters';
+import { createInstrumentInstance, ToneSynthInstance } from '../services/instruments';
 
 const beatsToTransportTime = (beats: number): string => {
   const safeBeats = Number.isFinite(beats) ? Math.max(0, beats) : 0;
@@ -25,6 +26,7 @@ const beatsToTransportTime = (beats: number): string => {
 interface TonePolySynth {
   toDestination: () => TonePolySynth;
   connect: (node: ToneEffect) => TonePolySynth;
+  disconnect: () => void;
   triggerAttackRelease: (
     note: string,
     duration: string,
@@ -36,6 +38,8 @@ interface TonePolySynth {
 
 interface ToneEffect {
   toDestination: () => ToneEffect;
+  connect: (node: ToneEffect) => ToneEffect;
+  disconnect: () => void;
   dispose: () => void;
 }
 
@@ -80,6 +84,8 @@ interface ToneEventValue {
 interface UsePlaybackOptions {
   notes: NoteEvent[];
   bpm: number;
+  filterStates: FilterState[];
+  instrumentId: string;
   onError?: (error: string) => void;
 }
 
@@ -100,37 +106,134 @@ const getTone = (): ToneNamespace | null => {
   return null;
 };
 
-export const usePlayback = ({ notes, bpm, onError }: UsePlaybackOptions): UsePlaybackReturn => {
+export const usePlayback = ({ notes, bpm, filterStates, instrumentId, onError }: UsePlaybackOptions): UsePlaybackReturn => {
   const [isPlaying, setIsPlaying] = useState(false);
-  const synthRef = useRef<TonePolySynth | null>(null);
-  const reverbRef = useRef<ToneEffect | null>(null);
+  const synthRef = useRef<ToneSynthInstance | null>(null);
+  const effectChainRef = useRef<ToneEffectInstance[]>([]);
   const partRef = useRef<TonePart | null>(null);
+  const currentInstrumentRef = useRef<string>(instrumentId);
 
-  // Initialize synth and effects on mount
+  // Rebuild effect chain when filter states change
+  const rebuildEffectChain = useCallback(() => {
+    const Tone = getTone();
+    if (!Tone || !synthRef.current) return;
+
+    try {
+      // Disconnect synth from everything
+      synthRef.current.disconnect();
+
+      // Dispose existing effects
+      effectChainRef.current.forEach(effect => {
+        try {
+          effect.dispose();
+        } catch {
+          // Ignore disposal errors
+        }
+      });
+      effectChainRef.current = [];
+
+      // Create new effects from enabled filters
+      const enabledFilters = filterStates.filter(f => f.enabled);
+      const effects: ToneEffectInstance[] = [];
+
+      for (const filterState of enabledFilters) {
+        const effect = createEffectInstance(filterState, Tone as unknown as Record<string, unknown>);
+        if (effect) {
+          effects.push(effect);
+        }
+      }
+
+      effectChainRef.current = effects;
+
+      // Connect chain: synth -> effect1 -> effect2 -> ... -> destination
+      if (effects.length > 0) {
+        synthRef.current.connect(effects[0] as unknown);
+        for (let i = 0; i < effects.length - 1; i++) {
+          effects[i].connect(effects[i + 1]);
+        }
+        effects[effects.length - 1].toDestination();
+      } else {
+        synthRef.current.toDestination();
+      }
+    } catch (e) {
+      console.error('Failed to rebuild effect chain:', e);
+      // Fallback: connect synth directly to destination
+      try {
+        synthRef.current?.toDestination();
+      } catch {
+        // Ignore
+      }
+    }
+  }, [filterStates]);
+
+  // Create or recreate synth when instrument changes
+  const rebuildSynth = useCallback(() => {
+    const Tone = getTone();
+    if (!Tone) return;
+
+    try {
+      // Dispose old synth
+      if (synthRef.current) {
+        synthRef.current.disconnect();
+        synthRef.current.dispose();
+      }
+
+      // Create new synth
+      synthRef.current = createInstrumentInstance(instrumentId, Tone as unknown as Record<string, unknown>);
+      currentInstrumentRef.current = instrumentId;
+
+      // Rebuild effect chain to reconnect
+      rebuildEffectChain();
+    } catch (e) {
+      console.error('Failed to create instrument:', e);
+      onError?.(`Failed to create instrument: ${e instanceof Error ? e.message : 'unknown error'}`);
+    }
+  }, [instrumentId, rebuildEffectChain, onError]);
+
+  // Initialize synth on mount
   useEffect(() => {
     const Tone = getTone();
     if (!Tone) return;
 
     try {
-      synthRef.current = new Tone.PolySynth(Tone.Synth, {
-        oscillator: { type: "triangle" },
-        envelope: { attack: 0.02, decay: 0.1, sustain: 0.3, release: 1 }
-      }).toDestination();
+      // Create initial synth
+      synthRef.current = createInstrumentInstance(instrumentId, Tone as unknown as Record<string, unknown>);
+      currentInstrumentRef.current = instrumentId;
 
-      reverbRef.current = new Tone.Reverb(AUDIO.REVERB_DECAY).toDestination();
-      synthRef.current.connect(reverbRef.current);
+      // Build initial effect chain
+      rebuildEffectChain();
     } catch (e) {
       onError?.(`Failed to initialize audio: ${e instanceof Error ? e.message : 'unknown error'}`);
     }
 
     return () => {
-      // Dispose both synth and reverb to prevent memory leaks
+      // Dispose synth
       synthRef.current?.dispose();
       synthRef.current = null;
-      reverbRef.current?.dispose();
-      reverbRef.current = null;
+      // Dispose all effects
+      effectChainRef.current.forEach(effect => {
+        try {
+          effect.dispose();
+        } catch {
+          // Ignore disposal errors
+        }
+      });
+      effectChainRef.current = [];
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [onError]);
+
+  // Rebuild synth when instrument changes
+  useEffect(() => {
+    if (currentInstrumentRef.current !== instrumentId) {
+      rebuildSynth();
+    }
+  }, [instrumentId, rebuildSynth]);
+
+  // Rebuild effect chain when filter states change
+  useEffect(() => {
+    rebuildEffectChain();
+  }, [rebuildEffectChain]);
 
   const stopPlayback = useCallback(() => {
     const Tone = getTone();

@@ -32,6 +32,44 @@ export interface StylePreset {
   prompt: string;
 }
 
+// Audio filter parameter definition
+export interface FilterParameter {
+  name: string;       // Display name
+  key: string;        // Parameter key for Tone.js
+  min: number;        // Minimum value
+  max: number;        // Maximum value
+  default: number;    // Default value
+  step: number;       // Slider step increment
+  unit?: string;      // Optional unit label (e.g., 's', 'Hz', 'dB')
+}
+
+// Audio filter definition
+export interface FilterDefinition {
+  id: string;
+  name: string;
+  description: string;
+  defaultEnabled: boolean;
+  parameters: FilterParameter[];
+}
+
+// Runtime filter state
+export interface FilterState {
+  id: string;
+  enabled: boolean;
+  params: Record<string, number>;
+}
+
+// Instrument category for grouping
+export type InstrumentCategory = 'keys' | 'synth' | 'other';
+
+// Instrument definition
+export interface InstrumentDefinition {
+  id: string;
+  name: string;
+  description: string;
+  category: InstrumentCategory;
+}
+
 // Tone.js global type definition since we are loading it via CDN
 declare global {
   interface Window {

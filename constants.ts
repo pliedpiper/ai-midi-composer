@@ -30,6 +30,14 @@ export const API = {
   PROXY_URL: '/api/chat/completions',
 } as const;
 
+// Effects Constants
+export const EFFECTS = {
+  // Extra time added to WAV export for reverb/delay tails
+  EXPORT_TAIL_SECONDS: 2,
+  // Sample rate for WAV export
+  EXPORT_SAMPLE_RATE: 44100,
+} as const;
+
 // Generation Constants
 export const GENERATION = {
   DEFAULT_BAR_COUNT: 8,
