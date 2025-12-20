@@ -6,6 +6,7 @@ import { usePlayback, useComposition, useAudioEffects, useInstrument } from './h
 import PromptInput from './components/PromptInput';
 import CompositionCard from './components/CompositionCard';
 import { VariationPicker } from './components/VariationPicker';
+import MidiUploadButton from './components/MidiUploadButton';
 import { AUDIO } from './constants';
 import { BarCount, Composition, PartType } from './types';
 
@@ -35,6 +36,7 @@ const App = () => {
     applyStyle,
     extend,
     setError,
+    setComposition,
   } = useComposition();
 
   const {
@@ -138,6 +140,12 @@ const App = () => {
   const handleExtend = async (barCount: BarCount) => {
     if (isPlaying) stopPlayback();
     await extend(barCount, modelId);
+  };
+
+  const handleMidiUpload = (uploadedComposition: Composition) => {
+    if (isPlaying) stopPlayback();
+    clearVariations();
+    setComposition(uploadedComposition);
   };
 
   const handleDownloadMidi = () => {
@@ -249,14 +257,25 @@ const App = () => {
       </header>
 
       <main className="max-w-4xl mx-auto px-6 py-10">
-        <PromptInput
-          prompt={prompt}
-          onPromptChange={setPrompt}
-          onGenerate={handleGenerate}
-          loading={loading}
-          disabled={!modelId}
-          error={error}
-        />
+        <div className="flex items-start gap-3 mb-6">
+          <div className="flex-1">
+            <PromptInput
+              prompt={prompt}
+              onPromptChange={setPrompt}
+              onGenerate={handleGenerate}
+              loading={loading}
+              disabled={!modelId}
+              error={error}
+            />
+          </div>
+          <div className="pt-1">
+            <MidiUploadButton
+              onUpload={handleMidiUpload}
+              onError={setError}
+              disabled={loading}
+            />
+          </div>
+        </div>
 
         {composition && (
           <CompositionCard
@@ -318,9 +337,17 @@ const App = () => {
               <p className="text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
                 No composition yet
               </p>
-              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+              <p className="text-xs mb-4" style={{ color: 'var(--text-muted)' }}>
                 Describe your music above and click Generate
               </p>
+              <div className="flex items-center justify-center gap-2">
+                <span className="text-xs" style={{ color: 'var(--text-muted)' }}>or</span>
+                <MidiUploadButton
+                  onUpload={handleMidiUpload}
+                  onError={setError}
+                  variant="primary"
+                />
+              </div>
             </div>
           </div>
         )}
