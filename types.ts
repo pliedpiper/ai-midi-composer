@@ -70,9 +70,25 @@ export interface InstrumentDefinition {
   category: InstrumentCategory;
 }
 
-// Tone.js global type definition since we are loading it via CDN
+// File System Access API permission mode
+interface FileSystemPermissionDescriptor {
+  mode?: 'read' | 'readwrite';
+}
+
+// Tone.js and File System Access API type definitions
 declare global {
   interface Window {
     Tone: unknown;
+    showDirectoryPicker: (options?: {
+      id?: string;
+      mode?: 'read' | 'readwrite';
+      startIn?: 'desktop' | 'documents' | 'downloads' | 'music' | 'pictures' | 'videos';
+    }) => Promise<FileSystemDirectoryHandle>;
+  }
+
+  // Extend FileSystemDirectoryHandle with permission methods
+  interface FileSystemDirectoryHandle {
+    queryPermission(descriptor?: FileSystemPermissionDescriptor): Promise<PermissionState>;
+    requestPermission(descriptor?: FileSystemPermissionDescriptor): Promise<PermissionState>;
   }
 }

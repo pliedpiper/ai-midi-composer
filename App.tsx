@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { createMidiFile } from './services/midiEncoder';
 import { exportToWav, downloadBlob } from './services/wavExporter';
 import { availableModels, assertModelListPresent, isValidModelId } from './services/models';
-import { usePlayback, useComposition, useAudioEffects, useInstrument } from './hooks';
+import { usePlayback, useComposition, useAudioEffects, useInstrument, useAutoSaveMidi } from './hooks';
 import PromptInput from './components/PromptInput';
 import CompositionCard from './components/CompositionCard';
 import { VariationPicker } from './components/VariationPicker';
@@ -53,6 +53,21 @@ const App = () => {
     instrumentId,
     setInstrumentId,
   } = useInstrument();
+
+  const {
+    isEnabled: autoSaveEnabled,
+    isSupported: autoSaveSupported,
+    lastSavedFile,
+    error: autoSaveError,
+    enableAutoSave,
+    disableAutoSave,
+    saveMidi,
+  } = useAutoSaveMidi();
+
+  // Track if composition change is from MIDI upload (should not auto-save)
+  const isFromUploadRef = useRef(false);
+  // Track previous composition to detect changes
+  const prevCompositionRef = useRef<typeof composition>(null);
 
   const { isPlaying, startPlayback, stopPlayback } = usePlayback({
     notes: composition?.notes ?? [],
@@ -115,6 +130,31 @@ const App = () => {
     setModelId(availableModels[0]!.id);
   }, [setError]);
 
+  // Auto-save MIDI when composition changes from AI generation
+  useEffect(() => {
+    if (!composition || !autoSaveEnabled) return;
+
+    // Skip if composition is the same reference (no actual change)
+    if (prevCompositionRef.current === composition) return;
+
+    // Skip if this change came from MIDI upload
+    if (isFromUploadRef.current) {
+      isFromUploadRef.current = false;
+      prevCompositionRef.current = composition;
+      return;
+    }
+
+    // Skip initial mount (no previous composition)
+    if (prevCompositionRef.current === null) {
+      prevCompositionRef.current = composition;
+      return;
+    }
+
+    // Auto-save the new composition
+    saveMidi(composition);
+    prevCompositionRef.current = composition;
+  }, [composition, autoSaveEnabled, saveMidi]);
+
   const handleGenerate = async (barCount?: BarCount) => {
     if (isPlaying) stopPlayback();
     await generate(prompt, modelId, barCount);
@@ -148,6 +188,8 @@ const App = () => {
   const handleMidiUpload = (uploadedComposition: Composition) => {
     if (isPlaying) stopPlayback();
     clearVariations();
+    // Mark as upload so auto-save is skipped
+    isFromUploadRef.current = true;
     setComposition(uploadedComposition);
   };
 
@@ -234,27 +276,49 @@ const App = () => {
               midi-composer
             </h1>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="text-xs" style={{ color: 'var(--text-muted)' }}>Model:</span>
-            <select
-              value={modelId}
-              onChange={(e) => {
-                const next = e.target.value;
-                setModelId(next);
-                localStorage.setItem("selectedModelId", next);
-              }}
-              className="font-mono text-xs px-3 py-1.5 rounded-lg cursor-pointer transition-all"
-              style={{
-                background: 'var(--bg-primary)',
-                color: 'var(--text-secondary)',
-                border: '1px solid var(--border)',
-                maxWidth: '220px'
-              }}
-            >
-              {availableModels.map((m) => (
-                <option key={m.id} value={m.id}>{m.id}</option>
-              ))}
-            </select>
+          <div className="flex items-center gap-4">
+            {/* Auto-save toggle */}
+            {autoSaveSupported && (
+              <button
+                onClick={autoSaveEnabled ? disableAutoSave : enableAutoSave}
+                className="flex items-center gap-2 font-mono text-xs px-3 py-1.5 rounded-lg cursor-pointer transition-all"
+                style={{
+                  background: autoSaveEnabled ? 'var(--accent)' : 'var(--bg-primary)',
+                  color: autoSaveEnabled ? 'white' : 'var(--text-secondary)',
+                  border: `1px solid ${autoSaveEnabled ? 'var(--accent)' : 'var(--border)'}`,
+                }}
+                title={autoSaveEnabled ? `Auto-saving to folder${lastSavedFile ? ` (last: ${lastSavedFile})` : ''}` : 'Click to enable auto-save'}
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+                  <polyline points="17,21 17,13 7,13 7,21" />
+                  <polyline points="7,3 7,8 15,8" />
+                </svg>
+                {autoSaveEnabled ? 'Auto-save ON' : 'Auto-save'}
+              </button>
+            )}
+            <div className="flex items-center gap-2">
+              <span className="text-xs" style={{ color: 'var(--text-muted)' }}>Model:</span>
+              <select
+                value={modelId}
+                onChange={(e) => {
+                  const next = e.target.value;
+                  setModelId(next);
+                  localStorage.setItem("selectedModelId", next);
+                }}
+                className="font-mono text-xs px-3 py-1.5 rounded-lg cursor-pointer transition-all"
+                style={{
+                  background: 'var(--bg-primary)',
+                  color: 'var(--text-secondary)',
+                  border: '1px solid var(--border)',
+                  maxWidth: '220px'
+                }}
+              >
+                {availableModels.map((m) => (
+                  <option key={m.id} value={m.id}>{m.id}</option>
+                ))}
+              </select>
+            </div>
           </div>
         </div>
       </header>

@@ -7,6 +7,7 @@ import { ContinuationPanel } from './ContinuationPanel';
 import { FilterPanel } from './FilterPanel';
 import { InstrumentSelector } from './InstrumentSelector';
 import { NoteDurationSelector } from './NoteDurationSelector';
+import { detectKey } from '../services/musicTheory';
 import { Composition, PartType, BarCount, FilterState, NoteEvent } from '../types';
 import { Music, Shuffle, Loader2 } from 'lucide-react';
 
@@ -78,6 +79,11 @@ const CompositionCard: React.FC<CompositionCardProps> = ({
     return Array.from(parts);
   }, [composition.notes]);
 
+  // Detect the musical key from the notes
+  const detectedKey = useMemo(() => {
+    return detectKey(composition.notes);
+  }, [composition.notes]);
+
   const isAnyOperationInProgress = addingPart !== null || regeneratingPart !== null ||
     applyingStyle || extending || generatingVariations;
 
@@ -116,6 +122,7 @@ const CompositionCard: React.FC<CompositionCardProps> = ({
             </h3>
             <div className="flex items-center gap-3 mt-0.5">
               <span className="badge">{composition.bpm} BPM</span>
+              <span className="badge">{detectedKey.name}</span>
               <span className="badge">{composition.notes.length} notes</span>
             </div>
           </div>

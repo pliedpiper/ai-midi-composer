@@ -1,6 +1,7 @@
 import React, { useMemo, useRef, useEffect, useCallback } from 'react';
 import { NoteEvent, PartType } from '../types';
 import { MIDI, PIANO_ROLL } from '../constants';
+import { detectKey, snapToKey, isNoteInKey, DetectedKey } from '../services/musicTheory';
 
 // Color mapping for different parts
 const PART_COLORS: Record<PartType, { from: string; to: string }> = {
@@ -142,6 +143,11 @@ const PianoRoll: React.FC<PianoRollProps> = ({
     return markers;
   }, [maxTime]);
 
+  // Detect the musical key from existing notes
+  const detectedKey = useMemo<DetectedKey>(() => {
+    return detectKey(notes);
+  }, [notes]);
+
   // Grid container ref for click handling
   const gridRef = useRef<HTMLDivElement>(null);
 
@@ -191,10 +197,13 @@ const PianoRoll: React.FC<PianoRollProps> = ({
         // Remove the note
         onRemoveNote(clickedNote.id);
       } else if (!clickedNote && onAddNote) {
+        // Snap the note to the detected key
+        const snappedNote = snapToKey(midiNote, detectedKey);
+
         // Add a new note
         const newNote: NoteEvent = {
           id: `user-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-          note: midiNote,
+          note: snappedNote,
           startTime: snappedBeatTime,
           duration: noteDuration,
           velocity: 80,
@@ -210,6 +219,7 @@ const PianoRoll: React.FC<PianoRollProps> = ({
       displayMinNote,
       displayMaxNote,
       noteDuration,
+      detectedKey,
       findNoteAtPosition,
       onAddNote,
       onRemoveNote,
