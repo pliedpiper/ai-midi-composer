@@ -8,13 +8,14 @@ import CompositionCard from './components/CompositionCard';
 import { VariationPicker } from './components/VariationPicker';
 import MidiUploadButton from './components/MidiUploadButton';
 import { AUDIO } from './constants';
-import { BarCount, Composition, PartType } from './types';
+import { BarCount, Composition, PartType, NoteEvent } from './types';
 
 const App = () => {
   const [prompt, setPrompt] = useState('');
   const [modelId, setModelId] = useState<string>('');
   const [variationPreviewId, setVariationPreviewId] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState(false);
+  const [noteDuration, setNoteDuration] = useState(1); // Default to quarter note
   const variationPlaybackRef = useRef<{ stop: () => void } | null>(null);
 
   const {
@@ -37,6 +38,8 @@ const App = () => {
     extend,
     setError,
     setComposition,
+    addNote,
+    removeNote,
   } = useComposition();
 
   const {
@@ -302,6 +305,10 @@ const App = () => {
             onUpdateFilterParam={updateFilterParam}
             onResetFilters={resetFilters}
             onSelectInstrument={setInstrumentId}
+            onAddNote={addNote}
+            onRemoveNote={removeNote}
+            noteDuration={noteDuration}
+            onNoteDurationChange={setNoteDuration}
           />
         )}
 

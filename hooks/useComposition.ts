@@ -8,7 +8,7 @@ import {
   applyStyleTransfer,
   extendComposition,
 } from '../services/geminiService';
-import { Composition, PartType, BarCount, CompositionVariation } from '../types';
+import { Composition, PartType, BarCount, CompositionVariation, NoteEvent } from '../types';
 import { assertModelListPresent, isValidModelId } from '../services/models';
 
 interface UseCompositionReturn {
@@ -33,6 +33,8 @@ interface UseCompositionReturn {
   setError: (error: string | null) => void;
   setComposition: (composition: Composition | null) => void;
   cancelRequest: () => void;
+  addNote: (note: NoteEvent) => void;
+  removeNote: (noteId: string) => void;
 }
 
 /**
@@ -422,6 +424,26 @@ export const useComposition = (): UseCompositionReturn => {
     }
   }, [composition, isOperationInProgress, cancelRequest]);
 
+  const addNote = useCallback((note: NoteEvent) => {
+    setComposition((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        notes: [...prev.notes, note],
+      };
+    });
+  }, []);
+
+  const removeNote = useCallback((noteId: string) => {
+    setComposition((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        notes: prev.notes.filter((n) => n.id !== noteId),
+      };
+    });
+  }, []);
+
   return {
     composition,
     loading,
@@ -444,5 +466,7 @@ export const useComposition = (): UseCompositionReturn => {
     setError,
     setComposition,
     cancelRequest,
+    addNote,
+    removeNote,
   };
 };

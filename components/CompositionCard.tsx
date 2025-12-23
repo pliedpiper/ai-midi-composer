@@ -6,7 +6,8 @@ import { StyleTransferPanel } from './StyleTransferPanel';
 import { ContinuationPanel } from './ContinuationPanel';
 import { FilterPanel } from './FilterPanel';
 import { InstrumentSelector } from './InstrumentSelector';
-import { Composition, PartType, BarCount, FilterState } from '../types';
+import { NoteDurationSelector } from './NoteDurationSelector';
+import { Composition, PartType, BarCount, FilterState, NoteEvent } from '../types';
 import { Music, Shuffle, Loader2 } from 'lucide-react';
 
 interface CompositionCardProps {
@@ -33,6 +34,10 @@ interface CompositionCardProps {
   onUpdateFilterParam: (filterId: string, paramKey: string, value: number) => void;
   onResetFilters: () => void;
   onSelectInstrument: (id: string) => void;
+  onAddNote: (note: NoteEvent) => void;
+  onRemoveNote: (noteId: string) => void;
+  noteDuration: number;
+  onNoteDurationChange: (duration: number) => void;
 }
 
 const CompositionCard: React.FC<CompositionCardProps> = ({
@@ -59,6 +64,10 @@ const CompositionCard: React.FC<CompositionCardProps> = ({
   onUpdateFilterParam,
   onResetFilters,
   onSelectInstrument,
+  onAddNote,
+  onRemoveNote,
+  noteDuration,
+  onNoteDurationChange,
 }) => {
   // Determine which parts exist in composition
   const existingParts = useMemo(() => {
@@ -113,6 +122,13 @@ const CompositionCard: React.FC<CompositionCardProps> = ({
         </div>
 
         <div className="flex items-center gap-2">
+          {/* Note Duration Selector */}
+          <NoteDurationSelector
+            duration={noteDuration}
+            onDurationChange={onNoteDurationChange}
+            disabled={isAnyOperationInProgress}
+          />
+
           {/* Instrument Selector */}
           <InstrumentSelector
             instrumentId={instrumentId}
@@ -157,6 +173,9 @@ const CompositionCard: React.FC<CompositionCardProps> = ({
         notes={composition.notes}
         isPlaying={isPlaying}
         bpm={composition.bpm}
+        onAddNote={onAddNote}
+        onRemoveNote={onRemoveNote}
+        noteDuration={noteDuration}
       />
 
       {/* Add/Regenerate Parts */}

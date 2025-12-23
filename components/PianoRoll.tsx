@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useEffect } from 'react';
+import React, { useMemo, useRef, useEffect, useCallback } from 'react';
 import { NoteEvent, PartType } from '../types';
 import { MIDI, PIANO_ROLL } from '../constants';
 
@@ -16,9 +16,20 @@ interface PianoRollProps {
   isPlaying: boolean;
   bpm: number;
   height?: number;
+  onAddNote?: (note: NoteEvent) => void;
+  onRemoveNote?: (noteId: string) => void;
+  noteDuration?: number;
 }
 
-const PianoRoll: React.FC<PianoRollProps> = ({ notes, isPlaying, bpm, height }) => {
+const PianoRoll: React.FC<PianoRollProps> = ({
+  notes,
+  isPlaying,
+  bpm,
+  height,
+  onAddNote,
+  onRemoveNote,
+  noteDuration = 1,
+}) => {
   const {
     NOTE_HEIGHT: DEFAULT_NOTE_HEIGHT,
     BEAT_WIDTH,
@@ -131,6 +142,83 @@ const PianoRoll: React.FC<PianoRollProps> = ({ notes, isPlaying, bpm, height }) 
     return markers;
   }, [maxTime]);
 
+  // Grid container ref for click handling
+  const gridRef = useRef<HTMLDivElement>(null);
+
+  // Check if a click position intersects with any note
+  const findNoteAtPosition = useCallback(
+    (beatTime: number, midiNote: number): NoteEvent | null => {
+      for (const note of notes) {
+        const noteEnd = note.startTime + note.duration;
+        if (
+          beatTime >= note.startTime &&
+          beatTime < noteEnd &&
+          midiNote === note.note
+        ) {
+          return note;
+        }
+      }
+      return null;
+    },
+    [notes]
+  );
+
+  // Handle grid click for adding/removing notes
+  const handleGridClick = useCallback(
+    (event: React.MouseEvent<HTMLDivElement>) => {
+      if (!gridRef.current) return;
+
+      const rect = gridRef.current.getBoundingClientRect();
+      const x = event.clientX - rect.left;
+      const y = event.clientY - rect.top;
+
+      // Convert X to beat time (snap to half beats)
+      const rawBeatTime = x / BEAT_WIDTH;
+      const snappedBeatTime = Math.round(rawBeatTime * 2) / 2;
+
+      // Convert Y to MIDI note number
+      const rowIndex = Math.floor((y - gridTop) / rowHeight);
+      const midiNote = displayMaxNote - rowIndex;
+
+      // Check bounds
+      if (midiNote < displayMinNote || midiNote > displayMaxNote) return;
+      if (snappedBeatTime < 0) return;
+
+      // Check if clicking on an existing note
+      const clickedNote = findNoteAtPosition(snappedBeatTime, midiNote);
+
+      if (clickedNote && onRemoveNote) {
+        // Remove the note
+        onRemoveNote(clickedNote.id);
+      } else if (!clickedNote && onAddNote) {
+        // Add a new note
+        const newNote: NoteEvent = {
+          id: `user-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          note: midiNote,
+          startTime: snappedBeatTime,
+          duration: noteDuration,
+          velocity: 80,
+          partType: 'melody',
+        };
+        onAddNote(newNote);
+      }
+    },
+    [
+      BEAT_WIDTH,
+      gridTop,
+      rowHeight,
+      displayMinNote,
+      displayMaxNote,
+      noteDuration,
+      findNoteAtPosition,
+      onAddNote,
+      onRemoveNote,
+    ]
+  );
+
+  // Determine if piano roll is interactive
+  const isInteractive = onAddNote || onRemoveNote;
+
   return (
     <div
       className="w-full overflow-hidden relative piano-roll-container"
@@ -140,11 +228,14 @@ const PianoRoll: React.FC<PianoRollProps> = ({ notes, isPlaying, bpm, height }) 
     >
       <div className="w-full overflow-x-auto piano-roll-scroll" style={{ height: `${viewportHeight}px` }}>
         <div
+          ref={gridRef}
           className="relative"
           style={{
             width: `${canvasWidth}px`,
             height: `${viewportHeight}px`,
+            cursor: isInteractive ? 'crosshair' : 'default',
           }}
+          onClick={isInteractive ? handleGridClick : undefined}
         >
           {/* Grid lines */}
           {beatMarkers.map((beat) => (
@@ -181,11 +272,12 @@ const PianoRoll: React.FC<PianoRollProps> = ({ notes, isPlaying, bpm, height }) 
 
             const noteOpacity = 0.5 + (note.velocity / 127) * 0.5;
             const colors = note.partType ? PART_COLORS[note.partType] : DEFAULT_COLOR;
+            const canRemove = !!onRemoveNote;
 
             return (
               <div
                 key={note.id}
-                className="absolute transition-all"
+                className={`absolute transition-all ${canRemove ? 'hover:scale-105 hover:brightness-110' : ''}`}
                 style={{
                   left: `${note.startTime * BEAT_WIDTH}px`,
                   top: `${gridTop + rowIndex * rowHeight + noteVerticalPadding}px`,
@@ -193,9 +285,10 @@ const PianoRoll: React.FC<PianoRollProps> = ({ notes, isPlaying, bpm, height }) 
                   height: `${noteBlockHeight}px`,
                   background: `linear-gradient(135deg, rgba(${colors.from}, ${noteOpacity}) 0%, rgba(${colors.to}, ${noteOpacity}) 100%)`,
                   borderRadius: '3px',
-                  boxShadow: `0 1px 3px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1)`
+                  boxShadow: `0 1px 3px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1)`,
+                  cursor: canRemove ? 'pointer' : 'default',
                 }}
-                title={`${note.partType || 'note'} · MIDI ${note.note} · vel ${note.velocity}`}
+                title={`${note.partType || 'note'} · MIDI ${note.note} · vel ${note.velocity}${canRemove ? ' · Click to remove' : ''}`}
               />
             );
           })}
