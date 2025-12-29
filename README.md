@@ -1,6 +1,6 @@
 # AI MIDI Composer
 
-Generate musical ideas with AI, preview them in a piano roll, play back in the browser, and export as MIDI.
+Generate musical ideas with AI, preview them in a piano roll or drum lane view, play back in the browser, and export as MIDI. Supports both melodic compositions and drum patterns.
 
 <div align="center">
   <img width="1200" height="475" alt="AI MIDI Composer banner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
@@ -23,6 +23,15 @@ Generate musical ideas with AI, preview them in a piano roll, play back in the b
 - **Style transfer** — Transform your composition with style presets (Jazzy, Classical, Syncopated, etc.) or custom prompts
 - **Continuation** — Extend your composition by adding more bars
 - **Model switching** — Use different AI models for different parts of your composition
+
+### Drum Composition
+- **AI drum generation** — Describe the drum pattern you want (e.g., "funky disco groove", "heavy rock beat")
+- **Lane-based timeline** — DAW-style drum editor with 9 drum pieces (kick, snare, clap, hi-hats, toms, crash, ride)
+- **Click-to-edit** — Add or remove hits by clicking on the grid
+- **Velocity control** — Full 0-127 velocity with opacity-based visualization
+- **Synthesized drums** — Real-time playback using Tone.js drum synthesizers
+- **MIDI import/export** — Upload existing drum MIDI files or export your patterns
+- **Drum variations** — Generate A/B/C variations to compare different grooves
 
 ## Quickstart
 
@@ -77,6 +86,14 @@ open http://localhost:3000
 - Each operation uses the currently selected model
 - Generate with Gemini, add melody with GPT, add bass with Claude — all in one composition
 
+### Drum Patterns
+1. Navigate to the **Drums** page using the nav bar
+2. Enter a prompt describing your drum pattern (e.g., "four on the floor house beat")
+3. Click **Generate Drums** to create the pattern
+4. Edit hits by clicking cells in the drum lane view
+5. Use **Variations** to generate alternative patterns
+6. Export as MIDI using the download button
+
 ## Model Selection
 
 Models are defined in `models.txt` (one per line; blank lines and `#` comments ignored).
@@ -106,15 +123,21 @@ provider/model-id,Human-readable label
 ## Project Structure
 
 ```
-├── App.tsx                      # Main app shell, model selection, layout
+├── App.tsx                      # Router wrapper, model selection, navigation
 ├── types.ts                     # TypeScript types (NoteEvent, Composition, PartType, BarCount)
-├── constants.ts                 # MIDI, audio, and generation constants
+├── types/
+│   └── drums.ts                 # Drum types (DrumHit, DrumPattern, DrumPiece)
+├── constants.ts                 # MIDI, audio, generation, and drum constants
 │
 ├── hooks/
 │   ├── usePlayback.ts           # Tone.js synth, transport, play/stop logic
-│   └── useComposition.ts        # Composition state, all generation operations
+│   ├── useComposition.ts        # Composition state, all generation operations
+│   ├── useDrumPlayback.ts       # Drum-specific playback with drum kit synths
+│   └── useDrumComposition.ts    # Drum pattern state and generation
 │
 ├── components/
+│   ├── NavBar.tsx               # Navigation between Melodic and Drums pages
+│   ├── MelodicPage.tsx          # Main melodic composition page
 │   ├── PromptInput.tsx          # Text input + generate button + length control
 │   ├── CompositionCard.tsx      # Title bar + piano roll + all control panels
 │   ├── PianoRoll.tsx            # Note grid with part-based coloring + playhead
@@ -123,11 +146,23 @@ provider/model-id,Human-readable label
 │   ├── LengthControl.tsx        # Bar count selector (4/8/16/32)
 │   ├── StyleTransferPanel.tsx   # Style presets + custom input
 │   ├── ContinuationPanel.tsx    # Extend composition controls
-│   └── VariationPicker.tsx      # Side-by-side variation comparison modal
+│   ├── VariationPicker.tsx      # Side-by-side variation comparison modal
+│   │
+│   └── drums/
+│       ├── DrumPage.tsx         # Main drum composition page
+│       ├── DrumPromptInput.tsx  # Drum prompt input + generate button
+│       ├── DrumCompositionCard.tsx  # Drum pattern display + controls
+│       ├── DrumLaneView.tsx     # Lane-based drum timeline editor
+│       ├── DrumPlayerControls.tsx   # Play/stop + download for drums
+│       └── DrumVariationPicker.tsx  # Drum variation comparison modal
 │
 ├── services/
-│   ├── geminiService.ts         # All AI generation functions
-│   ├── midiEncoder.ts           # Pure JS MIDI file encoder (SMF Type 0)
+│   ├── geminiService.ts         # Melodic AI generation functions
+│   ├── drumGeminiService.ts     # Drum AI generation functions
+│   ├── midiEncoder.ts           # Melodic MIDI file encoder
+│   ├── drumMidiEncoder.ts       # Drum MIDI encoder (GM channel 10)
+│   ├── drumMidiImporter.ts      # Import drum patterns from MIDI files
+│   ├── drumSynths.ts            # Drum synthesizer definitions (kick, snare, etc.)
 │   └── models.ts                # Model list parsing from models.txt
 │
 └── models.txt                   # Allowed model IDs + optional display labels
@@ -151,9 +186,16 @@ provider/model-id,Human-readable label
 
 8. **Export** — `midiEncoder.createMidiFile()` converts notes to binary MIDI format (SMF Type 0) → downloads as `.mid` file
 
+9. **Drum Generation** — `drumGeminiService.generateDrumPattern()` prompts AI for drum hits → returns `{ title, bpm, hits[] }` with drum piece and time
+
+10. **Drum Playback** — `useDrumPlayback` creates a drum kit (MembraneSynth for kick/toms, NoiseSynth for snare/clap, MetalSynth for cymbals) → triggers appropriate synths per hit
+
+11. **Drum MIDI** — Uses General MIDI drum channel (10) with standard note mappings (kick=36, snare=38, etc.)
+
 ## Tech Stack
 
 - **React 19** — UI framework
+- **React Router** — Client-side routing
 - **Vite** — Build tooling
 - **Tone.js** — Web audio synthesis (loaded via CDN)
 - **Tailwind CSS** — Styling (loaded via CDN)
