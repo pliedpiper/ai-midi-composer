@@ -25,14 +25,22 @@ const DrumPlayerControls: React.FC<DrumPlayerControlsProps> = ({
       {/* Play/Stop button */}
       <button
         onClick={isPlaying ? onStop : onPlay}
-        className="flex items-center justify-center w-8 h-8 rounded-lg transition-all"
+        className="btn btn-icon w-10 h-10 rounded-lg transition-all"
         style={{
-          background: isPlaying ? 'rgba(239, 68, 68, 0.2)' : 'var(--accent)',
-          color: isPlaying ? '#ef4444' : 'white',
+          background: isPlaying
+            ? 'var(--bg-primary)'
+            : 'linear-gradient(135deg, var(--accent) 0%, var(--accent-dim) 100%)',
+          color: 'white',
+          border: isPlaying ? '1px solid var(--border)' : 'none',
+          boxShadow: isPlaying ? 'none' : 'var(--shadow-sm), 0 0 15px rgba(61, 139, 255, 0.2)'
         }}
         title={isPlaying ? 'Stop' : 'Play'}
       >
-        {isPlaying ? <Square size={14} /> : <Play size={14} />}
+        {isPlaying ? (
+          <Square className="w-4 h-4" style={{ color: 'var(--text-secondary)' }} />
+        ) : (
+          <Play className="w-4 h-4 ml-0.5" />
+        )}
       </button>
 
       {/* Download dropdown */}
@@ -40,21 +48,22 @@ const DrumPlayerControls: React.FC<DrumPlayerControlsProps> = ({
         <button
           onClick={() => setShowDownloadMenu(!showDownloadMenu)}
           disabled={isExporting}
-          className="flex items-center gap-1 px-3 py-1.5 rounded-lg font-mono text-xs transition-all"
+          className="btn btn-icon w-10 h-10 rounded-lg transition-all group flex items-center justify-center"
           style={{
-            background: 'var(--bg-tertiary)',
-            color: isExporting ? 'var(--text-muted)' : 'var(--text-secondary)',
+            background: 'var(--bg-primary)',
+            color: 'var(--text-secondary)',
             border: '1px solid var(--border)',
-            cursor: isExporting ? 'not-allowed' : 'pointer',
+            opacity: isExporting ? 0.7 : 1,
           }}
         >
           {isExporting ? (
-            <Loader2 size={14} className="animate-spin" />
+            <Loader2 className="w-4 h-4 animate-spin" />
           ) : (
-            <Download size={14} />
+            <>
+              <Download className="w-4 h-4 transition-colors group-hover:text-white" />
+              <ChevronDown className="w-3 h-3 ml-0.5 transition-colors group-hover:text-white" />
+            </>
           )}
-          <span>Export</span>
-          <ChevronDown size={12} />
         </button>
 
         {showDownloadMenu && !isExporting && (
@@ -67,11 +76,10 @@ const DrumPlayerControls: React.FC<DrumPlayerControlsProps> = ({
 
             {/* Menu */}
             <div
-              className="absolute right-0 top-full mt-1 py-1 rounded-lg z-20 min-w-[120px]"
+              className="absolute right-0 mt-1 py-1 rounded-lg shadow-lg z-20 min-w-[140px]"
               style={{
-                background: 'var(--bg-elevated)',
+                background: 'var(--bg-secondary)',
                 border: '1px solid var(--border)',
-                boxShadow: 'var(--shadow-lg)',
               }}
             >
               <button
@@ -79,20 +87,34 @@ const DrumPlayerControls: React.FC<DrumPlayerControlsProps> = ({
                   onDownloadMidi();
                   setShowDownloadMenu(false);
                 }}
-                className="w-full px-3 py-2 text-left font-mono text-xs transition-all hover:bg-white/5"
+                className="w-full px-3 py-2 text-left text-xs font-medium transition-colors flex items-center gap-2"
                 style={{ color: 'var(--text-secondary)' }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'var(--bg-tertiary)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'transparent';
+                }}
               >
-                Download MIDI
+                <span className="w-8 text-[10px] font-mono opacity-60">MIDI</span>
+                <span>Standard MIDI file</span>
               </button>
               <button
                 onClick={() => {
                   onDownloadWav();
                   setShowDownloadMenu(false);
                 }}
-                className="w-full px-3 py-2 text-left font-mono text-xs transition-all hover:bg-white/5"
+                className="w-full px-3 py-2 text-left text-xs font-medium transition-colors flex items-center gap-2"
                 style={{ color: 'var(--text-secondary)' }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'var(--bg-tertiary)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'transparent';
+                }}
               >
-                Download WAV
+                <span className="w-8 text-[10px] font-mono opacity-60">WAV</span>
+                <span>Audio with effects</span>
               </button>
             </div>
           </>

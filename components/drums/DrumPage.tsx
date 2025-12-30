@@ -180,18 +180,19 @@ const DrumPage: React.FC<DrumPageProps> = ({
           <button
             onClick={() => fileInputRef.current?.click()}
             disabled={loading}
-            className="flex items-center gap-2 px-3 py-2 rounded-lg font-mono text-xs transition-all"
+            className="btn px-4 py-2 rounded-lg transition-all font-medium text-sm flex items-center gap-2"
             style={{
-              background: 'var(--bg-secondary)',
+              background: 'var(--bg-primary)',
               color: 'var(--text-secondary)',
               border: '1px solid var(--border)',
-              opacity: loading ? 0.5 : 1,
+              boxShadow: 'none',
+              opacity: loading ? 0.6 : 1,
               cursor: loading ? 'not-allowed' : 'pointer',
             }}
             title="Upload MIDI file"
           >
             <Upload size={14} />
-            <span>Upload</span>
+            <span>Upload MIDI</span>
           </button>
         </div>
       </div>
@@ -262,10 +263,11 @@ const DrumPage: React.FC<DrumPageProps> = ({
               <span className="text-xs" style={{ color: 'var(--text-muted)' }}>or</span>
               <button
                 onClick={() => fileInputRef.current?.click()}
-                className="flex items-center gap-2 px-3 py-1.5 rounded-lg font-mono text-xs transition-all"
+                className="btn px-4 py-2 rounded-lg transition-all font-medium text-sm flex items-center gap-2"
                 style={{
-                  background: 'var(--accent)',
+                  background: 'linear-gradient(135deg, var(--accent) 0%, var(--accent-dim) 100%)',
                   color: 'white',
+                  boxShadow: 'var(--shadow-sm), 0 0 15px rgba(61, 139, 255, 0.2)',
                 }}
               >
                 <Upload size={14} />

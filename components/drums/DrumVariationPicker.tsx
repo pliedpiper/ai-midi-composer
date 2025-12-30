@@ -29,6 +29,14 @@ const DrumVariationPicker: React.FC<DrumVariationPickerProps> = ({
     }
   };
 
+  const handlePlayClick = (variationId: string) => {
+    if (currentlyPlaying === variationId) {
+      onStopPlayback();
+    } else {
+      onPlayVariation(variationId);
+    }
+  };
+
   // Calculate bar count from first variation - scales to match actual content
   const firstVariation = variations[0];
   const maxTime = firstVariation?.pattern.hits.reduce((max, h) => Math.max(max, h.time), 0) ?? 0;
@@ -40,40 +48,32 @@ const DrumVariationPicker: React.FC<DrumVariationPickerProps> = ({
       style={{ background: 'rgba(0, 0, 0, 0.8)', backdropFilter: 'blur(4px)' }}
     >
       <div
-        className="w-full max-w-4xl max-h-[90vh] overflow-hidden rounded-xl animate-in zoom-in-95 duration-200"
+        className="w-full max-w-5xl rounded-xl overflow-hidden animate-scale-in"
         style={{
           background: 'var(--bg-secondary)',
           border: '1px solid var(--border)',
-          boxShadow: 'var(--shadow-lg)',
+          boxShadow: 'var(--shadow-xl)',
         }}
       >
         {/* Header */}
         <div
-          className="px-6 py-4 flex items-center justify-between"
-          style={{
-            background: 'var(--bg-tertiary)',
-            borderBottom: '1px solid var(--border)',
-          }}
+          className="px-6 py-4 flex justify-between items-center"
+          style={{ borderBottom: '1px solid var(--border-subtle)' }}
         >
-          <div>
-            <h2 className="font-mono text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
-              Choose a Variation
-            </h2>
-            <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
-              Click to select, then confirm your choice
-            </p>
-          </div>
+          <h2 className="text-lg font-medium" style={{ color: 'var(--text-primary)' }}>
+            Choose a Variation
+          </h2>
           <button
             onClick={onCancel}
-            className="p-2 rounded-lg transition-all hover:bg-white/5"
+            className="p-2 rounded-lg transition-colors"
             style={{ color: 'var(--text-muted)' }}
           >
-            <X size={18} />
+            <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Variations grid */}
-        <div className="p-6 overflow-y-auto" style={{ maxHeight: 'calc(90vh - 140px)' }}>
+        <div className="p-6">
           <div
             className="grid gap-4"
             style={{ gridTemplateColumns: `repeat(${variations.length}, 1fr)` }}
@@ -85,27 +85,26 @@ const DrumVariationPicker: React.FC<DrumVariationPickerProps> = ({
               return (
                 <div
                   key={variation.id}
-                  onClick={() => setSelectedId(variation.id)}
                   className="rounded-lg overflow-hidden cursor-pointer transition-all"
                   style={{
-                    background: 'var(--bg-tertiary)',
+                    background: 'var(--bg-primary)',
                     border: isSelected
                       ? '2px solid var(--accent)'
                       : '2px solid var(--border)',
-                    boxShadow: isSelected ? 'var(--shadow-glow)' : 'none',
+                    boxShadow: isSelected
+                      ? '0 0 20px rgba(61, 139, 255, 0.2)'
+                      : 'none',
                   }}
+                  onClick={() => setSelectedId(variation.id)}
                 >
                   {/* Variation header */}
                   <div
-                    className="px-3 py-2 flex items-center justify-between"
-                    style={{
-                      background: isSelected ? 'rgba(61, 139, 255, 0.1)' : 'var(--bg-secondary)',
-                      borderBottom: '1px solid var(--border)',
-                    }}
+                    className="px-4 py-3 flex items-center justify-between"
+                    style={{ borderBottom: '1px solid var(--border-subtle)' }}
                   >
                     <div className="flex items-center gap-2">
                       <span
-                        className="w-6 h-6 rounded flex items-center justify-center font-mono text-xs font-bold"
+                        className="px-2 py-0.5 text-xs font-medium rounded"
                         style={{
                           background: isSelected ? 'var(--accent)' : 'var(--bg-primary)',
                           color: isSelected ? 'white' : 'var(--text-secondary)',
@@ -117,29 +116,13 @@ const DrumVariationPicker: React.FC<DrumVariationPickerProps> = ({
                         {variation.pattern.hits.length} hits
                       </span>
                     </div>
-
-                    {/* Play/Stop button */}
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (isCurrentlyPlaying) {
-                          onStopPlayback();
-                        } else {
-                          onPlayVariation(variation.id);
-                        }
-                      }}
-                      className="p-1.5 rounded-md transition-all"
-                      style={{
-                        background: isCurrentlyPlaying ? 'rgba(239, 68, 68, 0.2)' : 'var(--bg-primary)',
-                        color: isCurrentlyPlaying ? '#ef4444' : 'var(--text-secondary)',
-                      }}
-                    >
-                      {isCurrentlyPlaying ? <Square size={12} /> : <Play size={12} />}
-                    </button>
+                    {isSelected && (
+                      <Check className="w-4 h-4" style={{ color: 'var(--accent)' }} />
+                    )}
                   </div>
 
                   {/* Mini drum lane view */}
-                  <div className="p-2">
+                  <div className="overflow-hidden">
                     <DrumLaneView
                       hits={variation.pattern.hits}
                       bpm={variation.pattern.bpm}
@@ -147,6 +130,38 @@ const DrumVariationPicker: React.FC<DrumVariationPickerProps> = ({
                       barCount={barCount}
                       compact
                     />
+                  </div>
+
+                  {/* Play button */}
+                  <div
+                    className="px-4 py-3 flex gap-2"
+                    style={{ borderTop: '1px solid var(--border-subtle)' }}
+                  >
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handlePlayClick(variation.id);
+                      }}
+                      className="flex-1 py-2 text-xs font-medium rounded-lg transition-all flex items-center justify-center gap-2"
+                      style={{
+                        background: isCurrentlyPlaying
+                          ? 'var(--accent)'
+                          : 'var(--bg-tertiary)',
+                        color: isCurrentlyPlaying ? 'white' : 'var(--text-secondary)',
+                      }}
+                    >
+                      {isCurrentlyPlaying ? (
+                        <>
+                          <Square className="w-3 h-3" />
+                          Stop
+                        </>
+                      ) : (
+                        <>
+                          <Play className="w-3 h-3" />
+                          Preview
+                        </>
+                      )}
+                    </button>
                   </div>
                 </div>
               );
@@ -156,19 +171,15 @@ const DrumVariationPicker: React.FC<DrumVariationPickerProps> = ({
 
         {/* Footer */}
         <div
-          className="px-6 py-4 flex items-center justify-end gap-3"
-          style={{
-            background: 'var(--bg-tertiary)',
-            borderTop: '1px solid var(--border)',
-          }}
+          className="px-6 py-4 flex justify-end gap-3"
+          style={{ borderTop: '1px solid var(--border-subtle)' }}
         >
           <button
             onClick={onCancel}
-            className="px-4 py-2 rounded-lg font-mono text-xs transition-all"
+            className="px-4 py-2 text-sm font-medium rounded-lg transition-colors"
             style={{
-              background: 'var(--bg-primary)',
+              background: 'var(--bg-tertiary)',
               color: 'var(--text-secondary)',
-              border: '1px solid var(--border)',
             }}
           >
             Cancel
@@ -176,15 +187,17 @@ const DrumVariationPicker: React.FC<DrumVariationPickerProps> = ({
           <button
             onClick={handleSelect}
             disabled={!selectedId}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg font-mono text-xs font-medium transition-all"
+            className="px-6 py-2 text-sm font-medium rounded-lg transition-all"
             style={{
-              background: selectedId ? 'var(--accent)' : 'var(--bg-secondary)',
+              background: selectedId
+                ? 'var(--accent)'
+                : 'var(--bg-tertiary)',
               color: selectedId ? 'white' : 'var(--text-muted)',
               cursor: selectedId ? 'pointer' : 'not-allowed',
+              opacity: selectedId ? 1 : 0.5,
             }}
           >
-            <Check size={14} />
-            <span>Use Selected</span>
+            Use Selected
           </button>
         </div>
       </div>
