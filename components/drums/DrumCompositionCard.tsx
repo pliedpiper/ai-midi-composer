@@ -50,9 +50,10 @@ const DrumCompositionCard: React.FC<DrumCompositionCardProps> = ({
 }) => {
   const [showFilters, setShowFilters] = useState(false);
 
-  // Calculate bar count from pattern
+  // Calculate bar count from pattern - scales to match actual generated content
+  // A hit at time 0-3.99 is in bar 1, time 4-7.99 is in bar 2, etc.
   const maxTime = pattern.hits.reduce((max, h) => Math.max(max, h.time), 0);
-  const barCount = Math.max(4, Math.ceil((maxTime + 1) / GENERATION.BEATS_PER_BAR));
+  const barCount = Math.floor(maxTime / GENERATION.BEATS_PER_BAR) + 1;
 
   const enabledFiltersCount = filterStates.filter(f => f.enabled).length;
 

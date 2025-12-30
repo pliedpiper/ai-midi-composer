@@ -22,6 +22,9 @@ pnpm-debug.log*
 .idea/
 .vscode/
 
+# playwright screenshots
+.playwright-mcp/
+
 # local notes
 plan.txt
 spec.md

@@ -240,12 +240,15 @@ export const generateDrumPattern = async (
   modelId: string,
   signal?: AbortSignal
 ): Promise<DrumPattern> => {
-  const totalBeats = barCount * GENERATION.BEATS_PER_BAR;
+  const defaultBeats = barCount * GENERATION.BEATS_PER_BAR;
 
   const userPrompt = `Create a drum pattern based on this request: "${prompt}"
 
-The pattern should be exactly ${barCount} bars (${totalBeats} beats) long.
-Time values should range from 0 to ${totalBeats - 0.25}.
+IMPORTANT: If the user specifies a number of bars in their request (e.g., "4 bar", "16 bars"), use that length. Otherwise, default to ${barCount} bars (${defaultBeats} beats).
+
+For the chosen length:
+- Time values should range from 0 to (totalBeats - 0.25)
+- Each bar is ${GENERATION.BEATS_PER_BAR} beats
 
 Consider:
 - Appropriate kick and snare placement for the style
@@ -279,7 +282,8 @@ export const regenerateDrumPattern = async (
   signal?: AbortSignal
 ): Promise<DrumPattern> => {
   const maxTime = currentPattern.hits.reduce((max, h) => Math.max(max, h.time), 0);
-  const barCount = Math.ceil((maxTime + 1) / GENERATION.BEATS_PER_BAR);
+  // Calculate bar count from actual content
+  const barCount = Math.floor(maxTime / GENERATION.BEATS_PER_BAR) + 1;
   const totalBeats = barCount * GENERATION.BEATS_PER_BAR;
 
   const userPrompt = `Create a new variation of this drum pattern.
@@ -330,7 +334,8 @@ export const generateDrumVariations = async (
   signal?: AbortSignal
 ): Promise<DrumPatternVariation[]> => {
   const maxTime = currentPattern.hits.reduce((max, h) => Math.max(max, h.time), 0);
-  const barCount = Math.ceil((maxTime + 1) / GENERATION.BEATS_PER_BAR);
+  // Calculate bar count from actual content
+  const barCount = Math.floor(maxTime / GENERATION.BEATS_PER_BAR) + 1;
   const totalBeats = barCount * GENERATION.BEATS_PER_BAR;
 
   const userPrompt = `Create ${count} distinct variations of this drum pattern:

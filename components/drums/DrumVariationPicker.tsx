@@ -29,10 +29,10 @@ const DrumVariationPicker: React.FC<DrumVariationPickerProps> = ({
     }
   };
 
-  // Calculate bar count from first variation
+  // Calculate bar count from first variation - scales to match actual content
   const firstVariation = variations[0];
   const maxTime = firstVariation?.pattern.hits.reduce((max, h) => Math.max(max, h.time), 0) ?? 0;
-  const barCount = Math.max(4, Math.ceil((maxTime + 1) / GENERATION.BEATS_PER_BAR));
+  const barCount = Math.floor(maxTime / GENERATION.BEATS_PER_BAR) + 1;
 
   return (
     <div

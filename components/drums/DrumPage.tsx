@@ -5,7 +5,6 @@ import { useDrumPlayback } from '../../hooks/useDrumPlayback';
 import { useAudioEffects } from '../../hooks';
 import { createDrumMidiFile } from '../../services/drumMidiEncoder';
 import { parseDrumMidiFile } from '../../services/drumMidiImporter';
-import { BarCount } from '../../types';
 import { DrumPattern } from '../../types/drums';
 import DrumPromptInput from './DrumPromptInput';
 import DrumCompositionCard from './DrumCompositionCard';
@@ -70,9 +69,9 @@ const DrumPage: React.FC<DrumPageProps> = ({
     }
   }, [error, onError]);
 
-  const handleGenerate = async (barCount?: BarCount) => {
+  const handleGenerate = async () => {
     if (isPlaying) stopPlayback();
-    await generate(prompt, modelId, barCount);
+    await generate(prompt, modelId);
   };
 
   const handleRegenerate = async () => {

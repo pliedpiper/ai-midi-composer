@@ -1,6 +1,5 @@
 import { useState, useCallback, useRef } from 'react';
 import { DrumPattern, DrumPatternVariation, DrumHit, DrumPiece } from '../types/drums';
-import { BarCount } from '../types';
 import {
   generateDrumPattern,
   regenerateDrumPattern,
@@ -25,7 +24,7 @@ interface UseDrumCompositionReturn {
   error: string | null;
   prompt: string;
   setPrompt: (prompt: string) => void;
-  generate: (prompt: string, modelId: string, barCount?: BarCount) => Promise<void>;
+  generate: (prompt: string, modelId: string) => Promise<void>;
   regenerate: (modelId: string) => Promise<void>;
   generateVariations: (count: 2 | 3, modelId: string) => Promise<void>;
   selectVariation: (id: string) => void;
@@ -63,9 +62,10 @@ export const useDrumComposition = (): UseDrumCompositionReturn => {
 
   const generate = useCallback(async (
     userPrompt: string,
-    modelId: string,
-    barCount: BarCount = 4
+    modelId: string
   ) => {
+    // Default to 8 bars for drum patterns - AI can interpret different lengths from the prompt
+    const barCount = 8;
     if (isOperationInProgress()) return;
     if (!userPrompt.trim()) {
       setError('Please enter a prompt to generate a drum pattern.');

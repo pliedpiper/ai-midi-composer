@@ -116,6 +116,7 @@ const DrumLaneView: React.FC<DrumLaneViewProps> = ({
           style={{
             width: cellWidth,
             height: laneHeight,
+            boxSizing: 'border-box',
             borderRight: isBarStart
               ? '2px solid var(--border)'
               : isBeatStart
@@ -161,20 +162,6 @@ const DrumLaneView: React.FC<DrumLaneViewProps> = ({
         className="flex"
         style={{ height: laneHeight }}
       >
-        {/* Lane label */}
-        <div
-          className="flex items-center justify-end pr-2 font-mono text-xs shrink-0"
-          style={{
-            width: labelWidth,
-            color: piece.color,
-            background: 'var(--bg-secondary)',
-            borderRight: '1px solid var(--border)',
-            borderBottom: '1px solid var(--border)',
-          }}
-        >
-          {compact ? piece.shortName : piece.name}
-        </div>
-
         {/* Grid cells */}
         <div className="flex">
           {cells}
@@ -194,6 +181,7 @@ const DrumLaneView: React.FC<DrumLaneViewProps> = ({
           style={{
             width: DRUM_LANE.CELLS_PER_BAR * cellWidth,
             height: 20,
+            boxSizing: 'border-box',
             color: 'var(--text-muted)',
             borderRight: bar < barCount - 1 ? '2px solid var(--border)' : 'none',
           }}
@@ -204,8 +192,35 @@ const DrumLaneView: React.FC<DrumLaneViewProps> = ({
     }
 
     return (
-      <div className="flex" style={{ marginLeft: labelWidth }}>
+      <div className="flex">
         {barNumbers}
+      </div>
+    );
+  };
+
+  // Render sticky lane labels
+  const renderLaneLabels = () => {
+    return (
+      <div className="flex flex-col">
+        {/* Empty space for bar numbers header */}
+        <div style={{ height: 20, background: 'var(--bg-secondary)', borderBottom: '1px solid var(--border)' }} />
+        {/* Lane labels */}
+        {DRUM_PIECES.map((piece) => (
+          <div
+            key={piece.id}
+            className="flex items-center justify-end pr-2 font-mono text-xs shrink-0"
+            style={{
+              width: labelWidth,
+              height: laneHeight,
+              color: piece.color,
+              background: 'var(--bg-secondary)',
+              borderRight: '1px solid var(--border)',
+              borderBottom: '1px solid var(--border)',
+            }}
+          >
+            {compact ? piece.shortName : piece.name}
+          </div>
+        ))}
       </div>
     );
   };
@@ -213,37 +228,51 @@ const DrumLaneView: React.FC<DrumLaneViewProps> = ({
   return (
     <div
       ref={containerRef}
-      className="relative overflow-x-auto rounded-lg"
+      className="relative flex rounded-lg"
       style={{
         background: 'var(--bg-tertiary)',
         border: '1px solid var(--border)',
       }}
     >
-      {/* Bar numbers header */}
+      {/* Sticky lane labels */}
       <div
-        style={{
-          background: 'var(--bg-secondary)',
-          borderBottom: '1px solid var(--border)',
-        }}
+        className="sticky left-0 z-20 shrink-0"
+        style={{ background: 'var(--bg-secondary)' }}
       >
-        {renderBarNumbers()}
+        {renderLaneLabels()}
       </div>
 
-      {/* Lanes */}
-      <div className="relative">
-        {DRUM_PIECES.map((piece, index) => renderLane(piece, index))}
+      {/* Scrollable grid area */}
+      <div className="overflow-x-auto">
+        {/* Grid container with explicit width to ensure alignment */}
+        <div style={{ width: gridWidth }}>
+          {/* Bar numbers header */}
+          <div
+            style={{
+              background: 'var(--bg-secondary)',
+              borderBottom: '1px solid var(--border)',
+            }}
+          >
+            {renderBarNumbers()}
+          </div>
 
-        {/* Playhead */}
-        <div
-          ref={playheadRef}
-          className="absolute top-0 bottom-0 w-0.5 pointer-events-none z-10"
-          style={{
-            background: 'var(--accent)',
-            left: labelWidth,
-            display: isPlaying ? 'block' : 'none',
-            boxShadow: '0 0 8px var(--accent)',
-          }}
-        />
+          {/* Lanes */}
+          <div className="relative">
+            {DRUM_PIECES.map((piece, index) => renderLane(piece, index))}
+
+          {/* Playhead */}
+          <div
+            ref={playheadRef}
+            className="absolute top-0 bottom-0 w-0.5 pointer-events-none z-10"
+            style={{
+              background: 'var(--accent)',
+              left: 0,
+              display: isPlaying ? 'block' : 'none',
+              boxShadow: '0 0 8px var(--accent)',
+            }}
+          />
+        </div>
+        </div>
       </div>
     </div>
   );
