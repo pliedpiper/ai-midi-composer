@@ -149,7 +149,7 @@ moderate tempo around 90 BPM."
 
 Different AI models have different strengths:
 
-- **Larger models** (GPT-5, Claude) tend to produce more musical and coherent output
+- **Larger models** (GPT-5.2, Claude Opus 4.5, Gemini 3.0 Pro) tend to produce more musical and coherent output
 - **Faster models** (Grok Fast, Haiku) are quicker but may be less nuanced
 - **Free models** may have rate limits or less consistent quality
 
