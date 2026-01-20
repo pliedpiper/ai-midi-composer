@@ -2,6 +2,8 @@
 
 Generate musical ideas with AI, preview them in a piano roll or drum lane view, play back in the browser, and export as MIDI. Supports both melodic compositions and drum patterns.
 
+![AI MIDI Composer](screenshot.png)
+
 ## Features
 
 ### Core
