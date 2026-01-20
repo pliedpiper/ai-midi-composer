@@ -2,10 +2,6 @@
 
 Generate musical ideas with AI, preview them in a piano roll or drum lane view, play back in the browser, and export as MIDI. Supports both melodic compositions and drum patterns.
 
-<div align="center">
-  <img width="1200" height="475" alt="AI MIDI Composer banner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
-
 ## Features
 
 ### Core
@@ -14,7 +10,19 @@ Generate musical ideas with AI, preview them in a piano roll or drum lane view, 
 - **Live playback** — Hear your composition instantly with Tone.js synthesis
 - **Piano roll visualization** — See notes in a scrolling grid with playhead tracking and part-based coloring
 - **MIDI export** — Download as a Standard MIDI File (Type 0)
+- **WAV export** — Export compositions to WAV format with all audio effects applied
+- **MIDI import** — Upload existing MIDI files as new compositions
 - **Multi-model support** — Choose from any model in `models.txt` via OpenRouter
+
+### Audio & Instruments
+- **Instrument selection** — Choose from 7 instruments: Piano, Electric Piano, Organ, Synth Lead, Synth Pad, Strings, Bass
+- **Audio effects** — 14 real-time effects including Reverb, Delay, Chorus, Lo-Fi, Bitcrush, Distortion, Compressor, EQ, Flanger, Phaser, Tremolo, Vibrato, Wah, and Overdrive
+- **Effect parameters** — Adjust wet/dry mix, decay, frequency, and other parameters per effect
+- **Key detection** — Automatic musical key detection with note snapping to the detected scale
+- **Note duration control** — Select default note duration (1/16, 1/8, 1/4, 1/2, whole) when editing
+
+### Workflow
+- **Auto-save** — Automatically save MIDI files to a user-selected directory using File System Access API
 
 ### AI Generation Features
 - **Length control** — Specify exact bar count (4, 8, 16, or 32 bars) when generating
@@ -119,6 +127,7 @@ provider/model-id,Human-readable label
 | `npm run dev` | Start Vite dev server on port 3000 |
 | `npm run build` | Build for production into `dist/` |
 | `npm run preview` | Preview the production build locally |
+| `npm run typecheck` | Run TypeScript type checking |
 
 ## Project Structure
 
@@ -132,6 +141,9 @@ provider/model-id,Human-readable label
 ├── hooks/
 │   ├── usePlayback.ts           # Tone.js synth, transport, play/stop logic
 │   ├── useComposition.ts        # Composition state, all generation operations
+│   ├── useAudioEffects.ts       # Audio filter state management
+│   ├── useAutoSaveMidi.ts       # Auto-save with File System Access API
+│   ├── useInstrument.ts         # Instrument selection state
 │   ├── useDrumPlayback.ts       # Drum-specific playback with drum kit synths
 │   └── useDrumComposition.ts    # Drum pattern state and generation
 │
@@ -147,6 +159,11 @@ provider/model-id,Human-readable label
 │   ├── StyleTransferPanel.tsx   # Style presets + custom input
 │   ├── ContinuationPanel.tsx    # Extend composition controls
 │   ├── VariationPicker.tsx      # Side-by-side variation comparison modal
+│   ├── FilterCard.tsx           # Individual audio filter UI card
+│   ├── FilterPanel.tsx          # Audio effects panel with all filters
+│   ├── InstrumentSelector.tsx   # Instrument dropdown selector
+│   ├── MidiUploadButton.tsx     # MIDI file upload button
+│   ├── NoteDurationSelector.tsx # Note duration selector (1/16 to whole)
 │   │
 │   └── drums/
 │       ├── DrumPage.tsx         # Main drum composition page
@@ -160,9 +177,15 @@ provider/model-id,Human-readable label
 │   ├── geminiService.ts         # Melodic AI generation functions
 │   ├── drumGeminiService.ts     # Drum AI generation functions
 │   ├── midiEncoder.ts           # Melodic MIDI file encoder
+│   ├── midiImporter.ts          # MIDI file import and parsing
 │   ├── drumMidiEncoder.ts       # Drum MIDI encoder (GM channel 10)
 │   ├── drumMidiImporter.ts      # Import drum patterns from MIDI files
 │   ├── drumSynths.ts            # Drum synthesizer definitions (kick, snare, etc.)
+│   ├── audioFilters.ts          # Audio effects definitions (14 effects)
+│   ├── instruments.ts           # Instrument definitions (7 instruments)
+│   ├── wavExporter.ts           # WAV export with offline rendering
+│   ├── musicTheory.ts           # Key detection algorithm
+│   ├── fileSystemService.ts     # File System Access API for auto-save
 │   └── models.ts                # Model list parsing from models.txt
 │
 └── models.txt                   # Allowed model IDs + optional display labels
@@ -192,15 +215,29 @@ provider/model-id,Human-readable label
 
 11. **Drum MIDI** — Uses General MIDI drum channel (10) with standard note mappings (kick=36, snare=38, etc.)
 
+12. **Audio Effects** — `audioFilters.ts` defines 14 Tone.js effects → `useAudioEffects` manages enabled state and parameters → effects are chained during playback and offline WAV rendering
+
+13. **Key Detection** — `musicTheory.ts` analyzes pitch class distribution → determines major/minor key → PianoRoll uses detected key for note snapping
+
+14. **MIDI Import** — `midiImporter.ts` parses uploaded MIDI files using @tonejs/midi → extracts BPM, notes, and track info → converts to app's Composition format
+
+15. **WAV Export** — `wavExporter.ts` uses Tone.js offline rendering → applies all enabled effects → exports as downloadable WAV file
+
+16. **Auto-Save** — `fileSystemService.ts` uses File System Access API → stores directory handle in IndexedDB → `useAutoSaveMidi` automatically saves MIDI files on composition changes
+
 ## Tech Stack
 
 - **React 19** — UI framework
 - **React Router** — Client-side routing
 - **Vite** — Build tooling
 - **Tone.js** — Web audio synthesis (loaded via CDN)
+- **@tonejs/midi** — MIDI file parsing and import
 - **Tailwind CSS** — Styling (loaded via CDN)
+- **Lucide React** — Icon library
 - **OpenRouter** — LLM API gateway
 - **TypeScript** — Type safety
+- **File System Access API** — Browser API for auto-save functionality
+- **IndexedDB** — Persistent storage for file system handles
 
 ## License
 
